@@ -7,8 +7,8 @@ function app_top(string $titulo, string $activo = ''): void {
     $rol = $u['rol'] ?? '';
 
     $menu = [
-        'dashboard' => ['📊','Dashboard','dashboard.php',['admin','vendedor']],
-        'productos' => ['📺','Productos','productos.php',['admin','vendedor']],
+        'dashboard' => ['📊','Dashboard','dashboard.php',['admin','vendedor','cliente']],
+        'productos' => ['📺','Productos','productos.php',['admin','vendedor','cliente']],
         'categorias'=> ['🗂️','Categorías','categorias.php',['admin']],
         'clientes'  => ['👥','Clientes','clientes.php',['admin','vendedor']],
         'ventas'    => ['🛒','Ventas','ventas.php',['admin','vendedor']],
