@@ -146,6 +146,17 @@ try {
         $stmtInsertUsuario->execute(['Administrador','admin',$hash,'admin']);
     }
 
+    $stmtVendedor = $pdo->prepare("SELECT COUNT(*) FROM usuarios WHERE usuario = ?");
+    $stmtVendedor->execute(['vendedor']);
+    if ((int)$stmtVendedor->fetchColumn() === 0) {
+        $hashVendedor = password_hash('vendedor123', PASSWORD_DEFAULT);
+        $stmtInsertVendedor = $pdo->prepare("
+            INSERT INTO usuarios(nombre,usuario,password,rol,estado)
+            VALUES(?,?,?,?,1)
+        ");
+        $stmtInsertVendedor->execute(['Vendedor Principal','vendedor',$hashVendedor,'vendedor']);
+    }
+
     $cantidadVentas = (int)$pdo->query("SELECT COUNT(*) FROM ventas")->fetchColumn();
     if ($cantidadVentas === 0) {
         $pdo->beginTransaction();
@@ -180,7 +191,7 @@ try {
         $pdo->commit();
     }
 
-    header("Location: dashboard.php");
+    header("Location: login.php");
     exit;
 
 } catch (Throwable $e) {
