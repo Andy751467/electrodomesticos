@@ -23,6 +23,10 @@ function es_vendedor(): bool {
     return rol_actual() === 'vendedor';
 }
 
+function es_cliente(): bool {
+    return rol_actual() === 'cliente';
+}
+
 function require_login(): void {
     if (!esta_logueado()) {
         $destino = basename($_SERVER['REQUEST_URI'] ?? 'dashboard.php');
