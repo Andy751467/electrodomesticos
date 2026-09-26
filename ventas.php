@@ -71,9 +71,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             [$items, $total] = prepararItemsVenta($db, $productosPost, $cantidades);
 
-            $usuarioId = (int)$db->query("SELECT id FROM usuarios WHERE estado=1 ORDER BY id LIMIT 1")->fetchColumn();
+            $usuarioSesion = usuario_actual();
+            $usuarioId = (int)($usuarioSesion['id'] ?? 0);
             if ($usuarioId <= 0) {
-                throw new Exception('No existe un usuario activo para registrar la venta.');
+                throw new Exception('No existe una sesión de usuario válida para registrar la venta.');
             }
 
             $s = $db->prepare("
