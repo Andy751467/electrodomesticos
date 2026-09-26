@@ -18,7 +18,7 @@ CREATE TABLE usuarios (
     nombre VARCHAR(100) NOT NULL,
     usuario VARCHAR(50) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
-    rol ENUM('admin','vendedor') NOT NULL DEFAULT 'vendedor',
+    rol ENUM('admin','vendedor','cliente') NOT NULL DEFAULT 'vendedor',
     estado TINYINT(1) NOT NULL DEFAULT 1,
     creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
@@ -92,7 +92,8 @@ CREATE TABLE detalle_venta (
 
 INSERT INTO usuarios(nombre, usuario, password, rol, estado) VALUES
 ('Administrador', 'admin', '$2y$12$zL9/KhbNelOsI8Hlh2WqZe5W.2FzSGyQVNq9jvPkJC67L8PcBVSNG', 'admin', 1),
-('Vendedor Principal', 'vendedor', '$2y$12$DCjy057SUUXqJp11nJOPIuYryeGY2IYsDZbjN3Fwp.RtWNWdA8/Au', 'vendedor', 1);
+('Vendedor Principal', 'vendedor', '$2y$12$DCjy057SUUXqJp11nJOPIuYryeGY2IYsDZbjN3Fwp.RtWNWdA8/Au', 'vendedor', 1),
+('Cliente Demo', 'cliente', '$2y$12$DCjy057SUUXqJp11nJOPIuYryeGY2IYsDZbjN3Fwp.RtWNWdA8/Au', 'cliente', 1);
 
 INSERT INTO categorias(nombre, descripcion) VALUES
 ('Televisores', 'Smart TV y televisores'),
