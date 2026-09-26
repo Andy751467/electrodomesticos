@@ -91,8 +91,8 @@ CREATE TABLE detalle_venta (
 ) ENGINE=InnoDB;
 
 INSERT INTO usuarios(nombre, usuario, password, rol, estado) VALUES
-('Administrador', 'admin', '$2y$12$e3cFMGgW.tefvg.B3oSeTOmSlnyasAXOT57qjTcU9Xs40GKAYl9yC', 'admin', 1),
-('Vendedor Principal', 'vendedor', '$2y$12$e3cFMGgW.tefvg.B3oSeTOmSlnyasAXOT57qjTcU9Xs40GKAYl9yC', 'vendedor', 1);
+('Administrador', 'admin', '$2y$12$zL9/KhbNelOsI8Hlh2WqZe5W.2FzSGyQVNq9jvPkJC67L8PcBVSNG', 'admin', 1),
+('Vendedor Principal', 'vendedor', '$2y$12$DCjy057SUUXqJp11nJOPIuYryeGY2IYsDZbjN3Fwp.RtWNWdA8/Au', 'vendedor', 1);
 
 INSERT INTO categorias(nombre, descripcion) VALUES
 ('Televisores', 'Smart TV y televisores'),
