@@ -1,8 +1,11 @@
 <?php
 require_once "../config/database.php";
 require_once "../config/helpers.php";
+require_once "../config/auth.php";
+if (!esta_logueado()) responder(false,"Debes iniciar sesión",null,401);
 $db=(new Database())->getConnection();
 $method=$_SERVER["REQUEST_METHOD"];
+if ($method!=="GET" && !es_admin()) responder(false,"Solo el administrador puede realizar esta operación",null,403);
 
 if($method==="GET"){
     if(isset($_GET["id"])){
