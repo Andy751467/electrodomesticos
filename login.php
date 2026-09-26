@@ -12,6 +12,7 @@ $usuarioIngresado = '';
 
 try {
     $dbRoles = (new Database())->getConnection();
+    $dbRoles->exec("ALTER TABLE usuarios MODIFY rol ENUM('admin','vendedor','cliente') NOT NULL DEFAULT 'vendedor'");
     $stmtRol = $dbRoles->prepare("SELECT id,password FROM usuarios WHERE usuario='vendedor' LIMIT 1");
     $stmtRol->execute();
     $vendedorDefault = $stmtRol->fetch();
@@ -29,6 +30,19 @@ try {
         $hashVendedor = password_hash('vendedor123', PASSWORD_DEFAULT);
         $actualizarVendedor = $dbRoles->prepare("UPDATE usuarios SET password=?, rol='vendedor', estado=1 WHERE id=?");
         $actualizarVendedor->execute([$hashVendedor, (int)$vendedorDefault['id']]);
+    }
+
+    $stmtCliente = $dbRoles->prepare("SELECT id FROM usuarios WHERE usuario='cliente' LIMIT 1");
+    $stmtCliente->execute();
+    $clienteDefault = $stmtCliente->fetch();
+
+    if (!$clienteDefault) {
+        $hashCliente = password_hash('cliente123', PASSWORD_DEFAULT);
+        $crearCliente = $dbRoles->prepare("
+            INSERT INTO usuarios(nombre,usuario,password,rol,estado)
+            VALUES('Cliente Demo','cliente',?,'cliente',1)
+        ");
+        $crearCliente->execute([$hashCliente]);
     }
 } catch (Throwable $e) {
     // El login mostrará el error normal de conexión si MySQL no está disponible.
@@ -203,7 +217,8 @@ $next = $_GET['next'] ?? '';
         <div class="demo">
             <strong>Accesos de prueba:</strong><br>
             Administrador: <strong>admin</strong> / <strong>admin123</strong><br>
-            Vendedor: <strong>vendedor</strong> / <strong>vendedor123</strong>
+            Vendedor: <strong>vendedor</strong> / <strong>vendedor123</strong><br>
+            Cliente: <strong>cliente</strong> / <strong>cliente123</strong>
         </div>
     </div>
 </div>
