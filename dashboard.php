@@ -441,11 +441,10 @@ function metodoPago(string $metodo): string {
 
         <nav class="menu">
             <a class="activo" href="dashboard.php">📊 <span>Dashboard</span></a>
-            <a href="api/productos.php" target="_blank">📺 <span>Productos</span></a>
-            <a href="api/categorias.php" target="_blank">🗂️ <span>Categorías</span></a>
-            <a href="api/clientes.php" target="_blank">👥 <span>Clientes</span></a>
-            <a href="api/ventas.php" target="_blank">🛒 <span>Ventas</span></a>
-            <a href="api/dashboard.php" target="_blank">⚙️ <span>API Dashboard</span></a>
+            <a href="productos.php">📺 <span>Productos</span></a>
+            <a href="categorias.php">🗂️ <span>Categorías</span></a>
+            <a href="clientes.php">👥 <span>Clientes</span></a>
+            <a href="ventas.php">🛒 <span>Ventas</span></a>
         </nav>
     </aside>
 
