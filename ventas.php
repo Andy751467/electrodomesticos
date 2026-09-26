@@ -1,9 +1,12 @@
 <?php
 require_once __DIR__ . '/config/database.php';
+require_once __DIR__ . '/config/auth.php';
+require_login();
 require_once __DIR__ . '/includes/layout.php';
 
 $db = (new Database())->getConnection();
 $mensaje = $error = '';
+$esAdmin = es_admin();
 
 function prepararItemsVenta(PDO $db, array $productos, array $cantidades): array {
     $total = 0;
@@ -103,6 +106,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         if ($accion === 'actualizar') {
+            if (!$esAdmin) throw new Exception('Solo el administrador puede editar ventas.');
             $ventaId = (int)($_POST['venta_id'] ?? 0);
             $clienteId = (int)($_POST['cliente_id'] ?? 0);
             $metodo = $_POST['metodo_pago'] ?? 'efectivo';
@@ -164,6 +168,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         if ($accion === 'eliminar') {
+            if (!$esAdmin) throw new Exception('Solo el administrador puede eliminar ventas.');
             $ventaId = (int)($_POST['venta_id'] ?? 0);
             if ($ventaId <= 0) throw new Exception('Venta inválida.');
 
@@ -215,6 +220,10 @@ $editarVenta = null;
 $editarItems = [];
 
 if (isset($_GET['editar'])) {
+    if (!$esAdmin) {
+        http_response_code(403);
+        die('Acceso denegado: solo el administrador puede editar ventas.');
+    }
     $id = (int)$_GET['editar'];
 
     $s = $db->prepare("SELECT * FROM ventas WHERE id=?");
@@ -429,6 +438,7 @@ app_top('Ventas','ventas');
                     <td>
                         <div class="actions">
                             <a class="btn btn-secondary" href="?ver=<?= $v['id'] ?>">👁️ Ver</a>
+                            <?php if($esAdmin): ?>
                             <a class="btn btn-secondary" href="?editar=<?= $v['id'] ?>">✏️ Editar</a>
 
                             <form method="post" onsubmit="return confirm('¿Eliminar la venta #<?= $v['id'] ?>? El stock de sus productos será devuelto.')">
@@ -436,6 +446,7 @@ app_top('Ventas','ventas');
                                 <input type="hidden" name="venta_id" value="<?= $v['id'] ?>">
                                 <button class="btn btn-danger" type="submit">🗑️ Eliminar</button>
                             </form>
+                            <?php endif; ?>
                         </div>
                     </td>
                 </tr>
