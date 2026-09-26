@@ -441,12 +441,22 @@ function metodoPago(string $metodo): string {
 
         <div class="menu-titulo">Menú principal</div>
 
+        <?php $rolActual = rol_actual(); ?>
         <nav class="menu">
             <a class="activo" href="dashboard.php">📊 <span>Dashboard</span></a>
             <a href="productos.php">📺 <span>Productos</span></a>
-            <a href="categorias.php">🗂️ <span>Categorías</span></a>
+
+            <?php if($rolActual === 'admin'): ?>
+                <a href="categorias.php">🗂️ <span>Categorías</span></a>
+            <?php endif; ?>
+
             <a href="clientes.php">👥 <span>Clientes</span></a>
             <a href="ventas.php">🛒 <span>Ventas</span></a>
+
+            <?php if($rolActual === 'admin'): ?>
+                <a href="usuarios.php">🔐 <span>Usuarios</span></a>
+                <a href="respaldo.php">💾 <span>Respaldo BD</span></a>
+            <?php endif; ?>
         </nav>
     </aside>
 
