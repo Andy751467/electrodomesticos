@@ -24,7 +24,7 @@ try {
             nombre VARCHAR(100) NOT NULL,
             usuario VARCHAR(50) NOT NULL UNIQUE,
             password VARCHAR(255) NOT NULL,
-            rol ENUM('admin','vendedor') NOT NULL DEFAULT 'vendedor',
+            rol ENUM('admin','vendedor','cliente') NOT NULL DEFAULT 'vendedor',
             estado TINYINT(1) NOT NULL DEFAULT 1,
             creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         ) ENGINE=InnoDB
@@ -155,6 +155,17 @@ try {
             VALUES(?,?,?,?,1)
         ");
         $stmtInsertVendedor->execute(['Vendedor Principal','vendedor',$hashVendedor,'vendedor']);
+    }
+
+    $stmtCliente = $pdo->prepare("SELECT COUNT(*) FROM usuarios WHERE usuario = ?");
+    $stmtCliente->execute(['cliente']);
+    if ((int)$stmtCliente->fetchColumn() === 0) {
+        $hashCliente = password_hash('cliente123', PASSWORD_DEFAULT);
+        $stmtInsertCliente = $pdo->prepare("
+            INSERT INTO usuarios(nombre,usuario,password,rol,estado)
+            VALUES(?,?,?,?,1)
+        ");
+        $stmtInsertCliente->execute(['Cliente Demo','cliente',$hashCliente,'cliente']);
     }
 
     $cantidadVentas = (int)$pdo->query("SELECT COUNT(*) FROM ventas")->fetchColumn();
