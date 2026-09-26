@@ -10,6 +10,30 @@ if (esta_logueado()) {
 $error = '';
 $usuarioIngresado = '';
 
+try {
+    $dbRoles = (new Database())->getConnection();
+    $stmtRol = $dbRoles->prepare("SELECT id,password FROM usuarios WHERE usuario='vendedor' LIMIT 1");
+    $stmtRol->execute();
+    $vendedorDefault = $stmtRol->fetch();
+
+    $hashAnterior = '$2y$12$e3cFMGgW.tefvg.B3oSeTOmSlnyasAXOT57qjTcU9Xs40GKAYl9yC';
+
+    if (!$vendedorDefault) {
+        $hashVendedor = password_hash('vendedor123', PASSWORD_DEFAULT);
+        $crearVendedor = $dbRoles->prepare("
+            INSERT INTO usuarios(nombre,usuario,password,rol,estado)
+            VALUES('Vendedor Principal','vendedor',?,'vendedor',1)
+        ");
+        $crearVendedor->execute([$hashVendedor]);
+    } elseif ($vendedorDefault['password'] === $hashAnterior) {
+        $hashVendedor = password_hash('vendedor123', PASSWORD_DEFAULT);
+        $actualizarVendedor = $dbRoles->prepare("UPDATE usuarios SET password=?, rol='vendedor', estado=1 WHERE id=?");
+        $actualizarVendedor->execute([$hashVendedor, (int)$vendedorDefault['id']]);
+    }
+} catch (Throwable $e) {
+    // El login mostrará el error normal de conexión si MySQL no está disponible.
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $usuarioIngresado = trim($_POST['usuario'] ?? '');
     $password = (string)($_POST['password'] ?? '');
@@ -177,9 +201,9 @@ $next = $_GET['next'] ?? '';
         </form>
 
         <div class="demo">
-            <strong>Acceso inicial:</strong><br>
-            Usuario: <strong>admin</strong><br>
-            Contraseña: <strong>admin123</strong>
+            <strong>Accesos de prueba:</strong><br>
+            Administrador: <strong>admin</strong> / <strong>admin123</strong><br>
+            Vendedor: <strong>vendedor</strong> / <strong>vendedor123</strong>
         </div>
     </div>
 </div>
