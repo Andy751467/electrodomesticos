@@ -6,6 +6,7 @@ function app_top(string $titulo, string $activo = ''): void {
         'categorias'=> ['🗂️','Categorías','categorias.php'],
         'clientes'  => ['👥','Clientes','clientes.php'],
         'ventas'    => ['🛒','Ventas','ventas.php'],
+        'respaldo'  => ['💾','Respaldo BD','respaldo.php'],
     ];
 ?>
 <!DOCTYPE html>
