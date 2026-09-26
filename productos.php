@@ -1,11 +1,15 @@
 <?php
 require_once __DIR__ . '/config/database.php';
+require_once __DIR__ . '/config/auth.php';
+require_login();
 require_once __DIR__ . '/includes/layout.php';
 $db=(new Database())->getConnection();
+$esAdmin = es_admin();
 $mensaje=$error='';$editar=null;
 
 try{
     if($_SERVER['REQUEST_METHOD']==='POST'){
+        if(!$esAdmin) throw new Exception('Solo el administrador puede registrar, editar o desactivar productos.');
         $accion=$_POST['accion']??'';
         if($accion==='guardar'){
             $id=(int)($_POST['id']??0);
@@ -37,6 +41,10 @@ try{
 }catch(Throwable $e){$error=$e->getMessage();}
 
 if(isset($_GET['editar'])){
+    if(!$esAdmin) {
+        http_response_code(403);
+        die('Acceso denegado: solo el administrador puede editar productos.');
+    }
     $s=$db->prepare("SELECT * FROM productos WHERE id=?");$s->execute([(int)$_GET['editar']]);$editar=$s->fetch();
 }
 $categorias=$db->query("SELECT id,nombre FROM categorias ORDER BY nombre")->fetchAll();
@@ -52,6 +60,7 @@ app_top('Productos','productos');
 <?php if($mensaje): ?><div class="alert alert-success"><?=htmlspecialchars($mensaje)?></div><?php endif; ?>
 <?php if($error): ?><div class="alert alert-error"><?=htmlspecialchars($error)?></div><?php endif; ?>
 
+<?php if($esAdmin): ?>
 <section class="panel">
 <div class="panel-header"><h3><?= $editar?'Editar producto':'Nuevo producto' ?></h3></div>
 <div class="panel-body">
@@ -70,6 +79,9 @@ app_top('Productos','productos');
 </form>
 </div>
 </section>
+<?php else: ?>
+<div class="alert alert-info">Estás ingresando como vendedor. Puedes consultar productos y stock, pero solo el administrador puede modificarlos.</div>
+<?php endif; ?>
 
 <div class="toolbar">
 <form class="search" method="get"><input name="q" value="<?=htmlspecialchars($q)?>" placeholder="Buscar por nombre, marca o modelo"><button class="btn btn-primary">🔎 Buscar</button><?php if($q!==''):?><a class="btn btn-secondary" href="productos.php">Limpiar</a><?php endif;?></form>
@@ -86,7 +98,13 @@ app_top('Productos','productos');
 <td><?=htmlspecialchars($p['categoria'])?></td><td><?=htmlspecialchars($p['marca'])?> <?=htmlspecialchars($p['modelo']??'')?></td>
 <td class="money">S/ <?=number_format((float)$p['precio'],2)?></td>
 <td><span class="badge <?=((int)$p['stock']<=5)?'badge-red':'badge-green'?>"><?=(int)$p['stock']?> und.</span></td>
-<td><div class="actions"><a class="btn btn-secondary" href="?editar=<?=$p['id']?>">✏️ Editar</a><form method="post" onsubmit="return confirm('¿Desactivar este producto?')"><input type="hidden" name="accion" value="eliminar"><input type="hidden" name="id" value="<?=$p['id']?>"><button class="btn btn-danger">🗑️ Desactivar</button></form></div></td>
+<td>
+<?php if($esAdmin): ?>
+<div class="actions"><a class="btn btn-secondary" href="?editar=<?=$p['id']?>">✏️ Editar</a><form method="post" onsubmit="return confirm('¿Desactivar este producto?')"><input type="hidden" name="accion" value="eliminar"><input type="hidden" name="id" value="<?=$p['id']?>"><button class="btn btn-danger">🗑️ Desactivar</button></form></div>
+<?php else: ?>
+<span class="badge badge-blue">Solo lectura</span>
+<?php endif; ?>
+</td>
 </tr>
 <?php endforeach; ?>
 <?php if(!$productos): ?><tr><td colspan="7" class="empty">No se encontraron productos.</td></tr><?php endif; ?>
