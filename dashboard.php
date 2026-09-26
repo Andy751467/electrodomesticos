@@ -450,8 +450,10 @@ function metodoPago(string $metodo): string {
                 <a href="categorias.php">🗂️ <span>Categorías</span></a>
             <?php endif; ?>
 
-            <a href="clientes.php">👥 <span>Clientes</span></a>
-            <a href="ventas.php">🛒 <span>Ventas</span></a>
+            <?php if($rolActual === 'admin' || $rolActual === 'vendedor'): ?>
+                <a href="clientes.php">👥 <span>Clientes</span></a>
+                <a href="ventas.php">🛒 <span>Ventas</span></a>
+            <?php endif; ?>
 
             <?php if($rolActual === 'admin'): ?>
                 <a href="usuarios.php">🔐 <span>Usuarios</span></a>
