@@ -1,14 +1,19 @@
 <?php
 require_once __DIR__ . '/../config/auth.php';
 require_login();
+
 function app_top(string $titulo, string $activo = ''): void {
+    $u = usuario_actual();
+    $rol = $u['rol'] ?? '';
+
     $menu = [
-        'dashboard' => ['📊','Dashboard','dashboard.php'],
-        'productos' => ['📺','Productos','productos.php'],
-        'categorias'=> ['🗂️','Categorías','categorias.php'],
-        'clientes'  => ['👥','Clientes','clientes.php'],
-        'ventas'    => ['🛒','Ventas','ventas.php'],
-        'respaldo'  => ['💾','Respaldo BD','respaldo.php'],
+        'dashboard' => ['📊','Dashboard','dashboard.php',['admin','vendedor']],
+        'productos' => ['📺','Productos','productos.php',['admin','vendedor']],
+        'categorias'=> ['🗂️','Categorías','categorias.php',['admin']],
+        'clientes'  => ['👥','Clientes','clientes.php',['admin','vendedor']],
+        'ventas'    => ['🛒','Ventas','ventas.php',['admin','vendedor']],
+        'usuarios'  => ['🔐','Usuarios','usuarios.php',['admin']],
+        'respaldo'  => ['💾','Respaldo BD','respaldo.php',['admin']],
     ];
 ?>
 <!DOCTYPE html>
@@ -26,33 +31,43 @@ function app_top(string $titulo, string $activo = ''): void {
             <div class="logo-icono">⚡</div>
             <h2>ElectroHogar<span>Sistema de Ventas</span></h2>
         </div>
+
         <div class="menu-titulo">Menú principal</div>
+
         <nav class="menu">
             <?php foreach ($menu as $key => $item): ?>
+                <?php if (!in_array($rol, $item[3], true)) continue; ?>
                 <a class="<?= $activo === $key ? 'activo' : '' ?>" href="<?= $item[2] ?>">
                     <?= $item[0] ?> <span><?= $item[1] ?></span>
                 </a>
             <?php endforeach; ?>
         </nav>
     </aside>
+
     <section class="contenido">
         <header class="topbar">
             <div>
                 <h1><?= htmlspecialchars($titulo) ?></h1>
                 <p>Sistema de venta y control de electrodomésticos</p>
             </div>
+
             <div class="usuario">
-                <?php $u = usuario_actual(); ?>
                 <div class="avatar"><?= htmlspecialchars(strtoupper(substr($u['nombre'] ?? 'U',0,1))) ?></div>
                 <div>
                     <strong><?= htmlspecialchars($u['nombre'] ?? 'Usuario') ?></strong>
-                    <p><?= htmlspecialchars(ucfirst($u['rol'] ?? '')) ?> · <a href="logout.php" style="color:#dc2626;text-decoration:none">Cerrar sesión</a></p>
+                    <p>
+                        <?= htmlspecialchars(ucfirst($rol)) ?>
+                        ·
+                        <a href="logout.php" style="color:#dc2626;text-decoration:none">Cerrar sesión</a>
+                    </p>
                 </div>
             </div>
         </header>
+
         <main>
 <?php
 }
+
 function app_bottom(): void {
 ?>
             <div class="pie">Sistema de Venta de Electrodomésticos · PHP + MySQL</div>
