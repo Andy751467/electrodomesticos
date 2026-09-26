@@ -24,7 +24,7 @@ try {
                 throw new Exception('Nombre y usuario son obligatorios.');
             }
 
-            if (!in_array($rol, ['admin','vendedor'], true)) {
+            if (!in_array($rol, ['admin','vendedor','cliente'], true)) {
                 throw new Exception('Rol inválido.');
             }
 
@@ -116,7 +116,7 @@ app_top('Usuarios y roles','usuarios');
 <section class="panel">
     <div class="panel-header">
         <h3><?= $editar ? 'Editar usuario' : 'Nuevo usuario' ?></h3>
-        <span class="muted">Administrador o vendedor</span>
+        <span class="muted">Administrador, vendedor o cliente</span>
     </div>
 
     <div class="panel-body">
@@ -139,6 +139,7 @@ app_top('Usuarios y roles','usuarios');
                     <label>Rol</label>
                     <select name="rol" required>
                         <option value="vendedor" <?= (($editar['rol'] ?? 'vendedor') === 'vendedor') ? 'selected' : '' ?>>Vendedor</option>
+                        <option value="cliente" <?= (($editar['rol'] ?? '') === 'cliente') ? 'selected' : '' ?>>Cliente</option>
                         <option value="admin" <?= (($editar['rol'] ?? '') === 'admin') ? 'selected' : '' ?>>Administrador</option>
                     </select>
                 </div>
