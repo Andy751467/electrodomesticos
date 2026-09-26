@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/config/database.php';
 require_once __DIR__ . '/config/auth.php';
-require_login();
+require_role(['admin','vendedor']);
 require_once __DIR__ . '/includes/layout.php';
 
 $db = (new Database())->getConnection();
