@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/../config/auth.php';
+require_login();
 function app_top(string $titulo, string $activo = ''): void {
     $menu = [
         'dashboard' => ['📊','Dashboard','dashboard.php'],
@@ -40,8 +42,12 @@ function app_top(string $titulo, string $activo = ''): void {
                 <p>Sistema de venta y control de electrodomésticos</p>
             </div>
             <div class="usuario">
-                <div class="avatar">A</div>
-                <div><strong>Administrador</strong><p>Panel principal</p></div>
+                <?php $u = usuario_actual(); ?>
+                <div class="avatar"><?= htmlspecialchars(strtoupper(substr($u['nombre'] ?? 'U',0,1))) ?></div>
+                <div>
+                    <strong><?= htmlspecialchars($u['nombre'] ?? 'Usuario') ?></strong>
+                    <p><?= htmlspecialchars(ucfirst($u['rol'] ?? '')) ?> · <a href="logout.php" style="color:#dc2626;text-decoration:none">Cerrar sesión</a></p>
+                </div>
             </div>
         </header>
         <main>
