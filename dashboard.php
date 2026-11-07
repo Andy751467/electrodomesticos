@@ -116,15 +116,15 @@ function metodoPago(string $metodo): string {
         }
 
         :root {
-            --sidebar: #111827;
-            --sidebar-hover: #1f2937;
-            --principal: #2563eb;
-            --principal-claro: #eff6ff;
-            --fondo: #f3f4f6;
+            --sidebar: #090909;
+            --sidebar-hover: #171717;
+            --principal: #dc2626;
+            --principal-claro: #fef2f2;
+            --fondo: #f5f5f5;
             --blanco: #ffffff;
-            --texto: #111827;
-            --texto-suave: #6b7280;
-            --borde: #e5e7eb;
+            --texto: #171717;
+            --texto-suave: #737373;
+            --borde: #e5e5e5;
             --verde: #16a34a;
             --naranja: #ea580c;
             --rojo: #dc2626;
@@ -308,11 +308,11 @@ function metodoPago(string $metodo): string {
             font-size: 20px;
         }
 
-        .azul { background: #eff6ff; color: #2563eb; }
-        .verde { background: #f0fdf4; color: #16a34a; }
-        .morado { background: #f5f3ff; color: #7c3aed; }
-        .naranja { background: #fff7ed; color: #ea580c; }
-        .rojo { background: #fef2f2; color: #dc2626; }
+        .azul { background: #171717; color: #ffffff; }
+        .verde { background: #dc2626; color: #ffffff; }
+        .morado { background: #262626; color: #ffffff; }
+        .naranja { background: #991b1b; color: #ffffff; }
+        .rojo { background: #fee2e2; color: #dc2626; }
 
         .tarjeta small {
             color: var(--texto-suave);
@@ -390,8 +390,8 @@ function metodoPago(string $metodo): string {
             border-radius: 999px;
             font-size: 11px;
             font-weight: 600;
-            background: #eff6ff;
-            color: #1d4ed8;
+            background: #fef2f2;
+            color: #991b1b;
         }
 
         .badge-stock {
@@ -718,7 +718,7 @@ function metodoPago(string $metodo): string {
   const payCounts = <?= json_encode($valoresPagos, JSON_NUMERIC_CHECK) ?>;
   const products = <?= json_encode($labelsTop, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?>;
   const units = <?= json_encode($valoresTop, JSON_NUMERIC_CHECK) ?>;
-  const palette = ['#2563eb','#16a34a','#f59e0b','#7c3aed','#06b6d4','#ef4444'];
+  const palette = ['#dc2626','#171717','#ef4444','#525252','#991b1b','#737373'];
   function setup(id) {
     const canvas = document.getElementById(id);
     const r = canvas.getBoundingClientRect();
