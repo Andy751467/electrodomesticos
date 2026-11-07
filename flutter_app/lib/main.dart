@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -79,7 +80,7 @@ class ApiService {
         'usuario': usuario,
         'password': password,
       }),
-    );
+    ).timeout(const Duration(seconds: 15));
 
     final setCookie = response.headers['set-cookie'];
     if (setCookie != null && setCookie.isNotEmpty) {
@@ -88,11 +89,11 @@ class ApiService {
 
     final body = _decode(response.body);
 
-    if (response.statusCode < 200 || response.statusCode >= 300) {
+    if (response.statusCode < 200 || response.statusCode >= 300 || body['ok'] != true || body['data'] is! Map) {
       throw Exception(body['mensaje'] ?? 'No se pudo iniciar sesión');
     }
 
-    return Map<String, dynamic>.from(body['data'] ?? {});
+    return Map<String, dynamic>.from(body['data'] as Map);
   }
 
   Future<Map<String, dynamic>> dashboard() async {
@@ -159,8 +160,8 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final usuarioCtrl = TextEditingController(text: 'admin');
-  final passwordCtrl = TextEditingController(text: 'admin123');
+  final usuarioCtrl = TextEditingController();
+  final passwordCtrl = TextEditingController();
 
   bool cargando = false;
   bool ocultar = true;
@@ -198,9 +199,15 @@ class _LoginPageState extends State<LoginPage> {
           builder: (_) => DashboardPage(usuario: usuario),
         ),
       );
+    } on TimeoutException {
+      if (mounted) setState(() => error = 'La conexión agotó el tiempo. Revisa Apache y la dirección IP.');
     } catch (e) {
+      if (!mounted) return;
+      final detalle = e.toString().replaceFirst('Exception: ', '');
       setState(() {
-        error = e.toString().replaceFirst('Exception: ', '');
+        error = detalle.contains('SocketException') || detalle.contains('ClientException')
+            ? 'No se pudo conectar a XAMPP. Comprueba la IP y que Apache esté encendido.'
+            : detalle;
       });
     } finally {
       if (mounted) {
