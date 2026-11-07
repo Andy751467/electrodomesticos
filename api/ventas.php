@@ -21,8 +21,11 @@ if($method==="GET"){
 }
 
 if($method==="POST"){
-    $d=jsonInput(); requerido($d,["usuario_id","metodo_pago","detalle"]);
+    $d=jsonInput(); requerido($d,["metodo_pago","detalle"]);
     if(!is_array($d["detalle"]) || count($d["detalle"])===0) responder(false,"La venta debe contener productos",null,422);
+    $usuarioId = (int)(usuario_actual()["id"] ?? 0);
+    if ($usuarioId <= 0) responder(false,"Sesión no válida",null,401);
+    if (!in_array($d["metodo_pago"], ["efectivo","yape","plin","tarjeta","transferencia"],true)) responder(false,"Método de pago inválido",null,422);
     try{
         $db->beginTransaction();
         $total=0; $items=[];
@@ -38,7 +41,7 @@ if($method==="POST"){
             $items[]=["producto_id"=>$pid,"cantidad"=>$cant,"precio"=>$precio,"subtotal"=>$sub];
         }
         $s=$db->prepare("INSERT INTO ventas(cliente_id,usuario_id,fecha,total,metodo_pago,observacion) VALUES(?,?,NOW(),?,?,?)");
-        $s->execute([!empty($d["cliente_id"])?(int)$d["cliente_id"]:null,(int)$d["usuario_id"],$total,$d["metodo_pago"],$d["observacion"]??null]);
+        $s->execute([!empty($d["cliente_id"])?(int)$d["cliente_id"]:null,$usuarioId,$total,$d["metodo_pago"],$d["observacion"]??null]);
         $vid=(int)$db->lastInsertId();
         $sd=$db->prepare("INSERT INTO detalle_venta(venta_id,producto_id,cantidad,precio_unitario,subtotal) VALUES(?,?,?,?,?)");
         $ss=$db->prepare("UPDATE productos SET stock=stock-? WHERE id=?");
