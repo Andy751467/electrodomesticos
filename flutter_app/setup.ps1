@@ -2,11 +2,21 @@ $ErrorActionPreference = "Stop"
 
 Write-Host "Preparando ElectroHogar Flutter..." -ForegroundColor Cyan
 
+$temp = Join-Path $env:TEMP "electrohogar_flutter_setup"
+New-Item -ItemType Directory -Force -Path $temp | Out-Null
+
+Copy-Item ".\lib\main.dart" (Join-Path $temp "main.dart") -Force
+Copy-Item ".\pubspec.yaml" (Join-Path $temp "pubspec.yaml") -Force
+
 flutter create . --platforms=android --project-name electrohogar_mobile
 
+Copy-Item (Join-Path $temp "main.dart") ".\lib\main.dart" -Force
+Copy-Item (Join-Path $temp "pubspec.yaml") ".\pubspec.yaml" -Force
 Copy-Item ".\config\AndroidManifest.xml" ".\android\app\src\main\AndroidManifest.xml" -Force
 
 flutter pub get
+
+Remove-Item $temp -Recurse -Force -ErrorAction SilentlyContinue
 
 Write-Host ""
 Write-Host "Flutter preparado correctamente." -ForegroundColor Green
