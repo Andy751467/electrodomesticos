@@ -510,6 +510,7 @@ function metodoPago(string $metodo): string {
 
             <?php if($rolActual === 'admin' || $rolActual === 'vendedor'): ?>
                 <a href="clientes.php">👥 <span>Clientes</span></a>
+                <a href="proveedores.php">🏭 <span>Proveedores</span></a>
                 <a href="ventas.php">🛒 <span>Ventas</span></a>
             <?php endif; ?>
 
