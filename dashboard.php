@@ -106,6 +106,7 @@ function metodoPago(string $metodo): string {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard | Electrodomésticos</title>
+    <link rel="icon" type="image/jpeg" href="assets/logo-electrohogar.jpg">
 
     <style>
         * {
@@ -162,13 +163,21 @@ function metodoPago(string $metodo): string {
         }
 
         .logo-icono {
-            width: 44px;
-            height: 44px;
+            width: 48px;
+            height: 48px;
             border-radius: 12px;
             display: grid;
             place-items: center;
-            background: var(--principal);
-            font-size: 22px;
+            background: #fff;
+            overflow: hidden;
+            flex: 0 0 auto;
+        }
+
+        .logo-icono img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
         }
 
         .logo h2 {
@@ -480,7 +489,7 @@ function metodoPago(string $metodo): string {
 
     <aside class="sidebar">
         <div class="logo">
-            <div class="logo-icono">⚡</div>
+            <div class="logo-icono"><img src="assets/logo-electrohogar.jpg" alt="Logo ElectroHogar"></div>
             <h2>
                 ElectroHogar
                 <span>Sistema de Ventas</span>
