@@ -11,6 +11,7 @@ function app_top(string $titulo, string $activo = ''): void {
         'productos' => ['📺','Productos','productos.php',['admin','vendedor','cliente']],
         'categorias'=> ['🗂️','Categorías','categorias.php',['admin']],
         'clientes'  => ['👥','Clientes','clientes.php',['admin','vendedor']],
+        'proveedores'=> ['🏭','Proveedores','proveedores.php',['admin','vendedor']],
         'ventas'    => ['🛒','Ventas','ventas.php',['admin','vendedor']],
         'usuarios'  => ['🔐','Usuarios','usuarios.php',['admin']],
         'respaldo'  => ['💾','Respaldo BD','respaldo.php',['admin']],
