@@ -110,9 +110,9 @@ $next = $_GET['next'] ?? '';
             display:grid;
             place-items:center;
             background:
-                radial-gradient(circle at 20% 20%,rgba(37,99,235,.18),transparent 35%),
-                radial-gradient(circle at 80% 80%,rgba(124,58,237,.14),transparent 35%),
-                #f3f4f6;
+                radial-gradient(circle at 20% 20%,rgba(220,38,38,.18),transparent 35%),
+                radial-gradient(circle at 80% 80%,rgba(23,23,23,.16),transparent 35%),
+                #f5f5f5;
             color:#111827;
             padding:24px;
         }
@@ -126,7 +126,7 @@ $next = $_GET['next'] ?? '';
             overflow:hidden;
         }
         .brand{
-            background:#111827;
+            background:#090909;
             color:#fff;
             padding:30px;
             text-align:center;
@@ -150,7 +150,7 @@ $next = $_GET['next'] ?? '';
             width:100%;padding:12px 13px;border:1px solid #d1d5db;
             border-radius:10px;font:inherit;outline:none;margin-bottom:16px;
         }
-        input:focus{border-color:#60a5fa;box-shadow:0 0 0 3px #dbeafe}
+        input:focus{border-color:#ef4444;box-shadow:0 0 0 3px #fee2e2}
         .password-wrap{position:relative}
         .password-wrap input{padding-right:48px}
         .toggle{
@@ -159,9 +159,9 @@ $next = $_GET['next'] ?? '';
         }
         .btn{
             width:100%;border:0;border-radius:10px;padding:12px;
-            background:#2563eb;color:#fff;font-weight:700;font-size:14px;cursor:pointer;
+            background:#dc2626;color:#fff;font-weight:700;font-size:14px;cursor:pointer;
         }
-        .btn:hover{background:#1d4ed8}
+        .btn:hover{background:#991b1b}
         .error{
             background:#fef2f2;border:1px solid #fecaca;color:#991b1b;
             padding:11px 12px;border-radius:9px;margin-bottom:16px;font-size:13px;
