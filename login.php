@@ -101,7 +101,7 @@ $next = $_GET['next'] ?? '';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Iniciar sesión | ElectroHogar</title>
-    <link rel="icon" type="image/jpeg" href="assets/logo-electrohogar.jpg">
+    <link rel="icon" type="image/jpeg" href="assets/logo-electrohogar.jpg?v=2">
     <style>
         *{box-sizing:border-box;margin:0;padding:0}
         body{
@@ -175,7 +175,7 @@ $next = $_GET['next'] ?? '';
 <body>
 <div class="login">
     <div class="brand">
-        <div class="icon"><img src="assets/logo-electrohogar.jpg" alt="Logo ElectroHogar"></div>
+        <div class="icon"><img src="assets/logo-electrohogar.jpg?v=2" alt="Logo ElectroHogar"></div>
         <h1>ElectroHogar</h1>
         <p>Sistema de Ventas e Inventario</p>
     </div>
