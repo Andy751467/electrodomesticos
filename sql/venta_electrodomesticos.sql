@@ -8,6 +8,7 @@ SET FOREIGN_KEY_CHECKS = 0;
 DROP TABLE IF EXISTS detalle_venta;
 DROP TABLE IF EXISTS ventas;
 DROP TABLE IF EXISTS productos;
+DROP TABLE IF EXISTS proveedores;
 DROP TABLE IF EXISTS categorias;
 DROP TABLE IF EXISTS clientes;
 DROP TABLE IF EXISTS usuarios;
@@ -48,6 +49,20 @@ CREATE TABLE productos (
     INDEX idx_producto_nombre (nombre),
     CONSTRAINT fk_producto_categoria
         FOREIGN KEY (categoria_id) REFERENCES categorias(id)
+) ENGINE=InnoDB;
+
+CREATE TABLE proveedores (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    razon_social VARCHAR(150) NOT NULL,
+    ruc VARCHAR(11) NOT NULL UNIQUE,
+    contacto VARCHAR(120) NULL,
+    telefono VARCHAR(20) NULL,
+    email VARCHAR(120) NULL,
+    direccion VARCHAR(220) NULL,
+    estado TINYINT(1) NOT NULL DEFAULT 1,
+    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_proveedor_nombre (razon_social),
+    INDEX idx_proveedor_estado (estado)
 ) ENGINE=InnoDB;
 
 CREATE TABLE clientes (
@@ -110,6 +125,10 @@ INSERT INTO productos(categoria_id, codigo_sku, nombre, marca, modelo, precio, s
 (3, 'MIC-OST-001', 'Microondas 20L', 'Oster', 'OGM20', 399.90, 14, 4, 'Microondas digital', 1),
 (4, 'LAV-MAB-001', 'Lavadora 15Kg', 'Mabe', 'LMA15', 1499.00, 7, 2, 'Lavadora automática', 1),
 (5, 'LIC-OST-001', 'Licuadora 1.5L', 'Oster', 'BLSTK', 289.90, 3, 3, 'Licuadora con vaso de vidrio', 1);
+
+INSERT INTO proveedores(razon_social, ruc, contacto, telefono, email, direccion, estado) VALUES
+('Distribuidora Electro Perú SAC', '20123456789', 'José Ramírez', '999888777', 'ventas@electroperu.com', 'Pucallpa', 1),
+('Importaciones Hogar EIRL', '20987654321', 'María Torres', '988777666', 'contacto@importhogar.com', 'Yarinacocha', 1);
 
 INSERT INTO clientes(nombres, apellidos, dni, telefono, email, direccion) VALUES
 ('Carlos', 'Ramirez', '70000001', '999111222', 'carlos@gmail.com', 'Pucallpa'),
