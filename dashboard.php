@@ -27,6 +27,17 @@ try {
         LIMIT 6
     ")->fetchAll();
 
+    // Datos reales para los graficos (consultas de solo lectura).
+    $resumenMeses = $db->query("SELECT DATE_FORMAT(fecha, '%Y-%m') AS mes,
+                COUNT(*) AS cantidad, COALESCE(SUM(total), 0) AS ingresos
+            FROM ventas WHERE fecha >= DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 5 MONTH), '%Y-%m-01')
+            GROUP BY DATE_FORMAT(fecha, '%Y-%m') ORDER BY mes")->fetchAll();
+    $resumenPagos = $db->query("SELECT metodo_pago AS metodo, COUNT(*) AS cantidad
+            FROM ventas GROUP BY metodo_pago ORDER BY cantidad DESC")->fetchAll();
+    $productosMasVendidos = $db->query("SELECT p.nombre, COALESCE(SUM(dv.cantidad),0) AS unidades
+            FROM detalle_venta dv INNER JOIN productos p ON p.id = dv.producto_id
+            GROUP BY p.id, p.nombre ORDER BY unidades DESC, p.nombre ASC LIMIT 6")->fetchAll();
+
     $productosStockBajo = $db->query("
         SELECT
             p.id,
@@ -50,7 +61,30 @@ try {
     $stockBajo = 0;
     $ultimasVentas = [];
     $productosStockBajo = [];
+    $resumenMeses = [];
+    $resumenPagos = [];
+    $productosMasVendidos = [];
 }
+
+// Generar seis meses consecutivos, incluyendo meses sin ventas.
+$labelsMeses = [];
+$serieIngresos = [];
+$serieCantidad = [];
+$totalesPorMes = [];
+foreach ($resumenMeses as $fila) {
+    $totalesPorMes[$fila['mes']] = $fila;
+}
+for ($i = 5; $i >= 0; $i--) {
+    $fechaMes = (new DateTimeImmutable('first day of this month'))->modify("-$i months");
+    $claveMes = $fechaMes->format('Y-m');
+    $labelsMeses[] = $fechaMes->format('m/Y');
+    $serieIngresos[] = (float)($totalesPorMes[$claveMes]['ingresos'] ?? 0);
+    $serieCantidad[] = (int)($totalesPorMes[$claveMes]['cantidad'] ?? 0);
+}
+$labelsPagos = array_map(static fn($f) => ucfirst(str_replace('_', ' ', $f['metodo'])), $resumenPagos);
+$valoresPagos = array_map(static fn($f) => (int)$f['cantidad'], $resumenPagos);
+$labelsTop = array_map(static fn($f) => $f['nombre'], $productosMasVendidos);
+$valoresTop = array_map(static fn($f) => (int)$f['unidades'], $productosMasVendidos);
 
 function moneda(float $monto): string {
     return 'S/ ' . number_format($monto, 2, '.', ',');
@@ -424,6 +458,14 @@ function metodoPago(string $metodo): string {
                 display: none;
             }
         }
+        /* Paneles de graficos integrados al estilo existente. */
+        .graficos-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:22px; margin-bottom:26px; }
+        .grafico-panel { background:white; border:1px solid var(--borde); border-radius:15px; padding:20px; min-width:0; box-shadow:0 3px 10px rgba(17,24,39,.04); }
+        .grafico-panel h3 { font-size:16px; margin:0 0 5px; }
+        .grafico-panel p { font-size:12px; color:var(--texto-suave); margin-bottom:17px; }
+        .grafico-canvas {position:relative; height:260px; width:100%;}
+        .mensaje-graficos { margin-bottom:18px; font-size:13px; color:#92400e; background:#fffbeb; border:1px solid #fde68a; padding:12px; border-radius:10px; display:none; }
+        @media(max-width:1050px) { .graficos-grid {grid-template-columns:1fr;} }
     </style>
 </head>
 <body>
@@ -533,6 +575,26 @@ function metodoPago(string $metodo): string {
 
             </section>
 
+            <section class="graficos-grid" aria-label="Estadisticas de ventas">
+                <article class="grafico-panel">
+                    <h3>Ingresos por mes</h3><p>Ingresos reales en soles de los últimos 6 meses</p>
+                    <div class="grafico-canvas"><canvas id="chartIngresos"></canvas></div>
+                </article>
+                <article class="grafico-panel">
+                    <h3>Cantidad de ventas por mes</h3><p>Evolución mensual de las ventas registradas</p>
+                    <div class="grafico-canvas"><canvas id="chartCantidad"></canvas></div>
+                </article>
+                <article class="grafico-panel">
+                    <h3>Métodos de pago</h3><p>Distribución según número de ventas</p>
+                    <div class="grafico-canvas"><canvas id="chartPagos"></canvas></div>
+                </article>
+                <article class="grafico-panel">
+                    <h3>Productos más vendidos</h3><p>Unidades vendidas por producto</p>
+                    <div class="grafico-canvas"><canvas id="chartProductos"></canvas></div>
+                </article>
+            </section>
+            <div class="mensaje-graficos" id="mensajeGraficos" role="status"></div>
+
             <section class="grid">
 
                 <article class="panel">
@@ -629,5 +691,112 @@ function metodoPago(string $metodo): string {
 
 </div>
 
+<script>
+(() => {
+  'use strict';
+  const months = <?= json_encode($labelsMeses, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?>;
+  const income = <?= json_encode($serieIngresos, JSON_NUMERIC_CHECK) ?>;
+  const counts = <?= json_encode($serieCantidad, JSON_NUMERIC_CHECK) ?>;
+  const payments = <?= json_encode($labelsPagos, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?>;
+  const payCounts = <?= json_encode($valoresPagos, JSON_NUMERIC_CHECK) ?>;
+  const products = <?= json_encode($labelsTop, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?>;
+  const units = <?= json_encode($valoresTop, JSON_NUMERIC_CHECK) ?>;
+  const palette = ['#2563eb','#16a34a','#f59e0b','#7c3aed','#06b6d4','#ef4444'];
+  function setup(id) {
+    const canvas = document.getElementById(id);
+    const r = canvas.getBoundingClientRect();
+    const w = Math.max(260, Math.round(r.width));
+    const h = Math.max(220, Math.round(r.height));
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = Math.round(w*dpr); canvas.height = Math.round(h*dpr);
+    const ctx = canvas.getContext('2d'); ctx.scale(dpr,dpr);
+    ctx.font='12px Segoe UI, Arial'; ctx.fillStyle='#64748b';
+    return {ctx,w,h};
+  }
+  function label(ctx,text,x,y,align='center',color='#64748b') {
+    ctx.textAlign=align; ctx.fillStyle=color;
+    const str=String(text);
+    ctx.fillText(str.length>19?str.slice(0,17)+'…':str,x,y);
+  }
+  function empty(ctx,w,h) {label(ctx,'Todavía no hay ventas registradas',w/2,h/2);}
+  function graph(id, labels, values, type, color, money=false) {
+    const {ctx,w,h}=setup(id);
+    const vals=values.map(v=>Number(v)||0);
+    if(!vals.length || vals.every(v=>v===0)){empty(ctx,w,h);return;}
+    const left=money?70:46, right=20, top=22, bottom=49;
+    const plotW=w-left-right, plotH=h-top-bottom;
+    const topValue=Math.max(...vals,1)*1.15;
+    ctx.strokeStyle='#e5e7eb';ctx.lineWidth=1;
+    for(let i=0;i<=4;i++){
+      const y=top+plotH*i/4;
+      ctx.beginPath();ctx.moveTo(left,y);ctx.lineTo(w-right,y);ctx.stroke();
+      const v=topValue*(1-i/4);
+      label(ctx,money?'S/ '+Math.round(v).toLocaleString('es-PE'):Math.round(v),left-9,y+4,'right');
+    }
+    const span=plotW/vals.length;
+    vals.forEach((v,i)=>{
+      const x=left+span*(i+.5), y=top+plotH*(1-v/topValue);
+      if(type==='bar'){
+        ctx.fillStyle=color; const bw=Math.min(48,span*.55);
+        ctx.fillRect(x-bw/2,y,bw,top+plotH-y);
+      }
+      label(ctx,labels[i]||'',x,h-21);
+    });
+    if(type==='line'){
+      ctx.beginPath();ctx.strokeStyle=color;ctx.lineWidth=3;
+      vals.forEach((v,i)=>{
+        const x=left+span*(i+.5), y=top+plotH*(1-v/topValue);
+        if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+      });ctx.stroke();
+      vals.forEach((v,i)=>{
+        const x=left+span*(i+.5),y=top+plotH*(1-v/topValue);
+        ctx.beginPath();ctx.arc(x,y,4,0,Math.PI*2);ctx.fillStyle=color;ctx.fill();
+      });
+    }
+  }
+  function donut(){
+    const {ctx,w,h}=setup('chartPagos');
+    const vals=payCounts.map(v=>Number(v)||0),total=vals.reduce((a,b)=>a+b,0);
+    if(!total){empty(ctx,w,h);return;}
+    const cx=w*.38,cy=h*.44,r=Math.min(h*.33,w*.23);
+    let start=-Math.PI/2;
+    vals.forEach((v,i)=>{
+      const end=start+2*Math.PI*v/total;
+      ctx.beginPath();ctx.arc(cx,cy,r,start,end);ctx.arc(cx,cy,r*.55,end,start,true);
+      ctx.closePath();ctx.fillStyle=palette[i%palette.length];ctx.fill();start=end;
+    });
+    ctx.font='bold 20px Segoe UI, Arial'; label(ctx,total,cx,cy+6,'center','#111827');
+    ctx.font='12px Segoe UI, Arial';
+    payments.forEach((p,i)=>{
+      const x=w*.66,y=30+i*23;
+      if(y>h-10)return;
+      ctx.fillStyle=palette[i%palette.length];ctx.fillRect(x,y-10,9,9);
+      label(ctx,p+' ('+payCounts[i]+')',x+14,y-1,'left');
+    });
+  }
+  function topProducts(){
+    const {ctx,w,h}=setup('chartProductos');
+    const vals=units.map(v=>Number(v)||0);
+    if(!vals.length || vals.every(v=>v===0)){empty(ctx,w,h);return;}
+    const max=Math.max(...vals,1),left=Math.min(145,w*.42),right=42,top=15;
+    const rowH=Math.min(41,(h-25)/vals.length);
+    vals.forEach((v,i)=>{
+      const y=top+i*rowH;
+      label(ctx,products[i],left-12,y+19,'right');
+      ctx.fillStyle='#edf2f7';ctx.fillRect(left,y+5,w-left-right,21);
+      ctx.fillStyle=palette[3];ctx.fillRect(left,y+5,(w-left-right)*v/max,21);
+      label(ctx,v,w-right+8,y+20,'left','#111827');
+    });
+  }
+  function render(){
+    graph('chartIngresos',months,income,'bar',palette[0],true);
+    graph('chartCantidad',months,counts,'line',palette[1]);
+    donut();topProducts();
+  }
+  render();
+  let resizeHandle;
+  window.addEventListener('resize',()=>{clearTimeout(resizeHandle);resizeHandle=setTimeout(render,120);});
+})();
+</script>
 </body>
 </html>
