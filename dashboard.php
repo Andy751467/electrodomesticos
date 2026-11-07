@@ -106,7 +106,7 @@ function metodoPago(string $metodo): string {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard | Electrodomésticos</title>
-    <link rel="icon" type="image/jpeg" href="assets/logo-electrohogar.jpg">
+    <link rel="icon" type="image/jpeg" href="assets/logo-electrohogar.jpg?v=2">
 
     <style>
         * {
@@ -479,6 +479,7 @@ function metodoPago(string $metodo): string {
         .grafico-panel h3 { font-size:16px; margin:0 0 5px; }
         .grafico-panel p { font-size:12px; color:var(--texto-suave); margin-bottom:17px; }
         .grafico-canvas {position:relative; height:260px; width:100%;}
+        .grafico-canvas canvas{width:100%!important;height:100%!important;display:block}
         .mensaje-graficos { margin-bottom:18px; font-size:13px; color:#92400e; background:#fffbeb; border:1px solid #fde68a; padding:12px; border-radius:10px; display:none; }
         @media(max-width:1050px) { .graficos-grid {grid-template-columns:1fr;} }
     </style>
@@ -489,7 +490,7 @@ function metodoPago(string $metodo): string {
 
     <aside class="sidebar">
         <div class="logo">
-            <div class="logo-icono"><img src="assets/logo-electrohogar.jpg" alt="Logo ElectroHogar"></div>
+            <div class="logo-icono"><img src="assets/logo-electrohogar.jpg?v=2" alt="Logo ElectroHogar"></div>
             <h2>
                 ElectroHogar
                 <span>Sistema de Ventas</span>
@@ -757,7 +758,19 @@ function metodoPago(string $metodo): string {
         ctx.fillStyle=color; const bw=Math.min(48,span*.55);
         ctx.fillRect(x-bw/2,y,bw,top+plotH-y);
       }
-      label(ctx,labels[i]||'',x,h-21);
+      const textoX = labels[i] || '';
+      if(span < 82){
+        ctx.save();
+        ctx.translate(x,h-15);
+        ctx.rotate(-0.42);
+        ctx.textAlign='right';
+        ctx.fillStyle='#64748b';
+        ctx.font='11px Segoe UI, Arial';
+        ctx.fillText(textoX,x*0,0);
+        ctx.restore();
+      }else{
+        label(ctx,textoX,x,h-21);
+      }
     });
     if(type==='line'){
       ctx.beginPath();ctx.strokeStyle=color;ctx.lineWidth=3;
