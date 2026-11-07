@@ -43,11 +43,13 @@ try {
         CREATE TABLE IF NOT EXISTS productos (
             id INT AUTO_INCREMENT PRIMARY KEY,
             categoria_id INT NOT NULL,
+            codigo_sku VARCHAR(50) NOT NULL UNIQUE,
             nombre VARCHAR(120) NOT NULL,
             marca VARCHAR(80) NOT NULL,
             modelo VARCHAR(80) NULL,
             precio DECIMAL(10,2) NOT NULL DEFAULT 0,
             stock INT NOT NULL DEFAULT 0,
+            stock_minimo INT NOT NULL DEFAULT 5,
             descripcion TEXT NULL,
             imagen VARCHAR(255) NULL,
             estado TINYINT(1) NOT NULL DEFAULT 1,
@@ -117,12 +119,12 @@ try {
     $cantidadProductos = (int)$pdo->query("SELECT COUNT(*) FROM productos")->fetchColumn();
     if ($cantidadProductos === 0) {
         $pdo->exec("
-            INSERT INTO productos(categoria_id,nombre,marca,modelo,precio,stock,descripcion) VALUES
-            (1,'Smart TV 50 pulgadas','Samsung','UN50',1699.90,10,'Televisor Smart 4K'),
-            (2,'Refrigeradora No Frost','LG','GT32',2199.00,6,'Refrigeradora 2 puertas'),
-            (3,'Microondas 20L','Oster','OGM20',399.90,15,'Microondas digital'),
-            (4,'Lavadora 15Kg','Mabe','LMA15',1499.00,7,'Lavadora automática'),
-            (5,'Licuadora 1.5L','Oster','BLSTK',289.90,4,'Licuadora de vidrio')
+            INSERT INTO productos(categoria_id,codigo_sku,nombre,marca,modelo,precio,stock,stock_minimo,descripcion) VALUES
+            (1,'TV-SAM-001','Smart TV 50 pulgadas','Samsung','UN50',1699.90,10,3,'Televisor Smart 4K'),
+            (2,'REF-LG-001','Refrigeradora No Frost','LG','GT32',2199.00,6,2,'Refrigeradora 2 puertas'),
+            (3,'MIC-OST-001','Microondas 20L','Oster','OGM20',399.90,15,4,'Microondas digital'),
+            (4,'LAV-MAB-001','Lavadora 15Kg','Mabe','LMA15',1499.00,7,2,'Lavadora automática'),
+            (5,'LIC-OST-001','Licuadora 1.5L','Oster','BLSTK',289.90,4,3,'Licuadora de vidrio')
         ");
     }
 
