@@ -6,11 +6,17 @@ require_login();
 try {
     $db = (new Database())->getConnection();
 
+    // Mantener compatibilidad con bases de datos creadas antes del stock mínimo.
+    $colStockMinimo = $db->query("SHOW COLUMNS FROM productos LIKE 'stock_minimo'")->fetch();
+    if (!$colStockMinimo) {
+        $db->exec("ALTER TABLE productos ADD stock_minimo INT NOT NULL DEFAULT 5 AFTER stock");
+    }
+
     $totalProductos = (int)$db->query("SELECT COUNT(*) FROM productos WHERE estado = 1")->fetchColumn();
     $totalClientes  = (int)$db->query("SELECT COUNT(*) FROM clientes")->fetchColumn();
     $totalVentas    = (int)$db->query("SELECT COUNT(*) FROM ventas")->fetchColumn();
     $ingresos       = (float)$db->query("SELECT COALESCE(SUM(total), 0) FROM ventas")->fetchColumn();
-    $stockBajo      = (int)$db->query("SELECT COUNT(*) FROM productos WHERE stock <= 5 AND estado = 1")->fetchColumn();
+    $stockBajo      = (int)$db->query("SELECT COUNT(*) FROM productos WHERE stock <= stock_minimo AND estado = 1")->fetchColumn();
 
     $ultimasVentas = $db->query("
         SELECT
@@ -47,7 +53,7 @@ try {
             c.nombre AS categoria
         FROM productos p
         LEFT JOIN categorias c ON c.id = p.categoria_id
-        WHERE p.stock <= 5 AND p.estado = 1
+        WHERE p.stock <= p.stock_minimo AND p.estado = 1
         ORDER BY p.stock ASC, p.nombre ASC
         LIMIT 6
     ")->fetchAll();
@@ -644,7 +650,7 @@ function metodoPago(string $metodo): string {
                 <article class="panel">
                     <div class="panel-header">
                         <h3>Productos con stock bajo</h3>
-                        <span>5 unidades o menos</span>
+                        <span>Según stock mínimo configurado</span>
                     </div>
 
                     <?php if (count($productosStockBajo) > 0): ?>
