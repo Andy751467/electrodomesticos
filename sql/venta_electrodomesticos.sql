@@ -33,11 +33,13 @@ CREATE TABLE categorias (
 CREATE TABLE productos (
     id INT AUTO_INCREMENT PRIMARY KEY,
     categoria_id INT NOT NULL,
+    codigo_sku VARCHAR(50) NOT NULL UNIQUE,
     nombre VARCHAR(120) NOT NULL,
     marca VARCHAR(80) NOT NULL,
     modelo VARCHAR(80) NULL,
     precio DECIMAL(10,2) NOT NULL DEFAULT 0,
     stock INT NOT NULL DEFAULT 0,
+    stock_minimo INT NOT NULL DEFAULT 5,
     descripcion TEXT NULL,
     imagen VARCHAR(255) NULL,
     estado TINYINT(1) NOT NULL DEFAULT 1,
@@ -102,12 +104,12 @@ INSERT INTO categorias(nombre, descripcion) VALUES
 ('Lavado', 'Lavadoras y secadoras'),
 ('Pequeños electrodomésticos', 'Licuadoras, planchas y otros');
 
-INSERT INTO productos(categoria_id, nombre, marca, modelo, precio, stock, descripcion, estado) VALUES
-(1, 'Smart TV 50 pulgadas', 'Samsung', 'UN50', 1699.90, 9, 'Televisor Smart 4K', 1),
-(2, 'Refrigeradora No Frost', 'LG', 'GT32', 2199.00, 6, 'Refrigeradora de 2 puertas', 1),
-(3, 'Microondas 20L', 'Oster', 'OGM20', 399.90, 14, 'Microondas digital', 1),
-(4, 'Lavadora 15Kg', 'Mabe', 'LMA15', 1499.00, 7, 'Lavadora automática', 1),
-(5, 'Licuadora 1.5L', 'Oster', 'BLSTK', 289.90, 3, 'Licuadora con vaso de vidrio', 1);
+INSERT INTO productos(categoria_id, codigo_sku, nombre, marca, modelo, precio, stock, stock_minimo, descripcion, estado) VALUES
+(1, 'TV-SAM-001', 'Smart TV 50 pulgadas', 'Samsung', 'UN50', 1699.90, 9, 3, 'Televisor Smart 4K', 1),
+(2, 'REF-LG-001', 'Refrigeradora No Frost', 'LG', 'GT32', 2199.00, 6, 2, 'Refrigeradora de 2 puertas', 1),
+(3, 'MIC-OST-001', 'Microondas 20L', 'Oster', 'OGM20', 399.90, 14, 4, 'Microondas digital', 1),
+(4, 'LAV-MAB-001', 'Lavadora 15Kg', 'Mabe', 'LMA15', 1499.00, 7, 2, 'Lavadora automática', 1),
+(5, 'LIC-OST-001', 'Licuadora 1.5L', 'Oster', 'BLSTK', 289.90, 3, 3, 'Licuadora con vaso de vidrio', 1);
 
 INSERT INTO clientes(nombres, apellidos, dni, telefono, email, direccion) VALUES
 ('Carlos', 'Ramirez', '70000001', '999111222', 'carlos@gmail.com', 'Pucallpa'),
