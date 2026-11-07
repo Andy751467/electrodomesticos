@@ -540,9 +540,7 @@ function metodoPago(string $metodo): string {
 
         <main>
 
-            <?php include __DIR__ . '/includes/sprints_proyecto.php'; ?>
-
-            <?php if (isset($errorBD)): ?>
+<?php if (isset($errorBD)): ?>
                 <div class="alerta-error">
                     <strong>No se pudo conectar con la base de datos.</strong><br>
                     <?= htmlspecialchars($errorBD) ?>
