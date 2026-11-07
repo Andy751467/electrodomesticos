@@ -60,6 +60,22 @@ try {
     ");
 
     $pdo->exec("
+        CREATE TABLE IF NOT EXISTS proveedores (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            razon_social VARCHAR(150) NOT NULL,
+            ruc VARCHAR(11) NOT NULL UNIQUE,
+            contacto VARCHAR(120) NULL,
+            telefono VARCHAR(20) NULL,
+            email VARCHAR(120) NULL,
+            direccion VARCHAR(220) NULL,
+            estado TINYINT(1) NOT NULL DEFAULT 1,
+            creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_proveedor_nombre (razon_social),
+            INDEX idx_proveedor_estado (estado)
+        ) ENGINE=InnoDB
+    ");
+
+    $pdo->exec("
         CREATE TABLE IF NOT EXISTS clientes (
             id INT AUTO_INCREMENT PRIMARY KEY,
             nombres VARCHAR(100) NOT NULL,
@@ -125,6 +141,15 @@ try {
             (3,'MIC-OST-001','Microondas 20L','Oster','OGM20',399.90,15,4,'Microondas digital'),
             (4,'LAV-MAB-001','Lavadora 15Kg','Mabe','LMA15',1499.00,7,2,'Lavadora automática'),
             (5,'LIC-OST-001','Licuadora 1.5L','Oster','BLSTK',289.90,4,3,'Licuadora de vidrio')
+        ");
+    }
+
+    $cantidadProveedores = (int)$pdo->query("SELECT COUNT(*) FROM proveedores")->fetchColumn();
+    if ($cantidadProveedores === 0) {
+        $pdo->exec("
+            INSERT INTO proveedores(razon_social,ruc,contacto,telefono,email,direccion,estado) VALUES
+            ('Distribuidora Electro Perú SAC','20123456789','José Ramírez','999888777','ventas@electroperu.com','Pucallpa',1),
+            ('Importaciones Hogar EIRL','20987654321','María Torres','988777666','contacto@importhogar.com','Yarinacocha',1)
         ");
     }
 
