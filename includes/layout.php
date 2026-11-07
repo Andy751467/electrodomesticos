@@ -22,14 +22,14 @@ function app_top(string $titulo, string $activo = ''): void {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($titulo) ?> | ElectroHogar</title>
-    <link rel="icon" type="image/jpeg" href="assets/logo-electrohogar.jpg">
+    <link rel="icon" type="image/jpeg" href="assets/logo-electrohogar.jpg?v=2">
     <link rel="stylesheet" href="assets/app.css">
 </head>
 <body>
 <div class="layout">
     <aside class="sidebar">
         <div class="logo">
-            <div class="logo-icono"><img src="assets/logo-electrohogar.jpg" alt="Logo ElectroHogar"></div>
+            <div class="logo-icono"><img src="assets/logo-electrohogar.jpg?v=2" alt="Logo ElectroHogar"></div>
             <h2>ElectroHogar<span>Sistema de Ventas</span></h2>
         </div>
 
