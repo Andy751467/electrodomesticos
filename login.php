@@ -101,6 +101,7 @@ $next = $_GET['next'] ?? '';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Iniciar sesión | ElectroHogar</title>
+    <link rel="icon" type="image/jpeg" href="assets/logo-electrohogar.jpg">
     <style>
         *{box-sizing:border-box;margin:0;padding:0}
         body{
@@ -131,11 +132,14 @@ $next = $_GET['next'] ?? '';
             text-align:center;
         }
         .icon{
-            width:58px;height:58px;border-radius:16px;
+            width:72px;height:72px;border-radius:18px;
             display:grid;place-items:center;
             margin:0 auto 14px;
-            background:#2563eb;font-size:28px;
+            background:#fff;
+            overflow:hidden;
+            box-shadow:0 8px 22px rgba(0,0,0,.18);
         }
+        .icon img{width:100%;height:100%;object-fit:contain;display:block}
         .brand h1{font-size:24px}
         .brand p{color:#cbd5e1;margin-top:6px;font-size:13px}
         .body{padding:30px}
@@ -171,7 +175,7 @@ $next = $_GET['next'] ?? '';
 <body>
 <div class="login">
     <div class="brand">
-        <div class="icon">⚡</div>
+        <div class="icon"><img src="assets/logo-electrohogar.jpg" alt="Logo ElectroHogar"></div>
         <h1>ElectroHogar</h1>
         <p>Sistema de Ventas e Inventario</p>
     </div>
