@@ -3,6 +3,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'services/http_client_io.dart' if (dart.library.html) 'services/http_client_web.dart' as client_factory;
 
 void main() {
   runApp(const ElectroHogarApp());
@@ -61,10 +62,10 @@ class ApiService {
 
   static const String baseUrl = String.fromEnvironment(
     'API_URL',
-    defaultValue: 'http://10.0.2.2/electrodomesticos/api',
+    defaultValue: 'http://localhost/electrohogar_profesor/api',
   );
 
-  final http.Client _client = http.Client();
+  final http.Client _client = client_factory.createApiClient();
   String? _cookie;
 
   Map<String, String> get headers => {
