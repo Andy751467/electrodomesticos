@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:async';
+import 'dashboard_plus.dart';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -51,6 +52,7 @@ class ElectroHogarApp extends StatelessWidget {
         ),
       ),
       home: const LoginPage(),
+      routes: {'/login': (_) => const LoginPage()},
     );
   }
 }
@@ -127,6 +129,50 @@ class ApiService {
     return List<dynamic>.from(body['data'] ?? []);
   }
 
+  // Consultas de los módulos del dashboard.
+  Future<List<dynamic>> listarModulo(String archivo) async {
+    const permitidos = {
+      'clientes.php', 'ventas.php', 'proveedores.php', 'categorias.php'
+    };
+    if (!permitidos.contains(archivo)) {
+      throw Exception('Módulo no autorizado');
+    }
+    final response = await _client.get(
+      Uri.parse(baseUrl + '/' + archivo),
+      headers: headers,
+    ).timeout(const Duration(seconds: 15));
+    final body = _decode(response.body);
+    if (response.statusCode != 200 || body['ok'] != true) {
+      throw Exception(body['mensaje'] ?? 'No se pudieron consultar los datos');
+    }
+    return List<dynamic>.from(body['data'] ?? []);
+  }
+
+  Future<void> crearCliente(Map<String, dynamic> datos) async {
+    final response = await _client.post(
+      Uri.parse(baseUrl + '/clientes.php'),
+      headers: headers,
+      body: jsonEncode(datos),
+    ).timeout(const Duration(seconds: 15));
+    final body = _decode(response.body);
+    if ((response.statusCode != 200 && response.statusCode != 201) ||
+        body['ok'] != true) {
+      throw Exception(body['mensaje'] ?? 'No se pudo registrar el cliente');
+    }
+  }
+
+  Future<Map<String, dynamic>> detalleVenta(int id) async {
+    final response = await _client.get(
+      Uri.parse(baseUrl + '/ventas.php?id=' + id.toString()),
+      headers: headers,
+    ).timeout(const Duration(seconds: 15));
+    final body = _decode(response.body);
+    if (response.statusCode != 200 || body['ok'] != true) {
+      throw Exception(body['mensaje'] ?? 'No se pudo consultar la venta');
+    }
+    return Map<String, dynamic>.from(body['data'] ?? {});
+  }
+
   Future<void> logout() async {
     try {
       await _client.post(
@@ -196,7 +242,15 @@ class _LoginPageState extends State<LoginPage> {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (_) => DashboardPage(usuario: usuario),
+          builder: (_) => ElectroDashboardPlus(
+            usuario: usuario,
+            loadDashboard: () => ApiService.instance.dashboard(),
+            loadProducts: () => ApiService.instance.productos(),
+            loadModule: ApiService.instance.listarModulo,
+            createClient: ApiService.instance.crearCliente,
+            loadSale: ApiService.instance.detalleVenta,
+            logout: ApiService.instance.logout,
+          ),
         ),
       );
     } on TimeoutException {
