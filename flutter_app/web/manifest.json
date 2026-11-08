@@ -1,0 +1,9 @@
+{
+  "name": "ElectroHogar",
+  "short_name": "ElectroHogar",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#111111",
+  "theme_color": "#dc2626",
+  "description": "Login y dashboard de ElectroHogar con Flutter Web"
+}
