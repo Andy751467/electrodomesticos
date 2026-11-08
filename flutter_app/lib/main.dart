@@ -176,8 +176,9 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> ingresar() async {
+    if (cargando) return;
     if (usuarioCtrl.text.trim().isEmpty || passwordCtrl.text.isEmpty) {
-      setState(() => error = 'Ingresa usuario y contraseña.');
+      setState(() => error = 'Ingresa tu usuario y contraseña.');
       return;
     }
 
@@ -191,9 +192,7 @@ class _LoginPageState extends State<LoginPage> {
         usuarioCtrl.text.trim(),
         passwordCtrl.text,
       );
-
       if (!mounted) return;
-
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
@@ -201,161 +200,530 @@ class _LoginPageState extends State<LoginPage> {
         ),
       );
     } on TimeoutException {
-      if (mounted) setState(() => error = 'La conexión agotó el tiempo. Revisa Apache y la dirección IP.');
+      if (mounted) {
+        setState(() =>
+            error = 'La conexión tardó demasiado. Revisa Apache y XAMPP.');
+      }
     } catch (e) {
       if (!mounted) return;
       final detalle = e.toString().replaceFirst('Exception: ', '');
       setState(() {
-        error = detalle.contains('SocketException') || detalle.contains('ClientException')
-            ? 'No se pudo conectar a XAMPP. Comprueba la IP y que Apache esté encendido.'
+        error = detalle.contains('SocketException') ||
+                detalle.contains('ClientException') ||
+                detalle.contains('XMLHttpRequest')
+            ? 'No se pudo conectar con el servidor PHP. Verifica XAMPP y localhost.'
             : detalle;
       });
     } finally {
-      if (mounted) {
-        setState(() => cargando = false);
-      }
+      if (mounted) setState(() => cargando = false);
     }
+  }
+
+  Widget _brandLogo({double size = 54}) {
+    return Container(
+      width: size,
+      height: size,
+      padding: const EdgeInsets.all(5),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x33000000),
+            blurRadius: 14,
+            offset: Offset(0, 6),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(10),
+        child: Image.asset(
+          'assets/logo-electrohogar.jpg',
+          fit: BoxFit.contain,
+          errorBuilder: (_, __, ___) => const Icon(
+            Icons.home_work_outlined,
+            color: Color(0xFFDC2626),
+            size: 30,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _brandName({double fontSize = 23}) {
+    return Text.rich(
+      TextSpan(
+        children: const [
+          TextSpan(text: 'Electro', style: TextStyle(color: Colors.white)),
+          TextSpan(
+            text: 'Hogar',
+            style: TextStyle(color: Color(0xFFF87171)),
+          ),
+        ],
+      ),
+      style: TextStyle(
+        fontSize: fontSize,
+        fontWeight: FontWeight.w900,
+        letterSpacing: -.5,
+      ),
+    );
+  }
+
+  Widget _feature(IconData icon, String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 15),
+      child: Row(
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: const Color(0x26EF4444),
+              border: Border.all(color: const Color(0x44EF4444)),
+              borderRadius: BorderRadius.circular(11),
+            ),
+            child: Icon(icon, color: const Color(0xFFF87171), size: 19),
+          ),
+          const SizedBox(width: 12),
+          Flexible(
+            child: Text(
+              text,
+              style: const TextStyle(
+                color: Color(0xFFE5E7EB),
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _desktopBrand() {
+    return Container(
+      color: const Color(0xFF111114),
+      child: Stack(
+        clipBehavior: Clip.hardEdge,
+        children: [
+          Positioned(
+            right: -160,
+            top: -180,
+            child: Container(
+              width: 480,
+              height: 480,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [Color(0x50DC2626), Color(0x00111114)],
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            left: -170,
+            bottom: -270,
+            child: Container(
+              width: 530,
+              height: 530,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [Color(0x33DC2626), Color(0x00111114)],
+                ),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 54,
+              vertical: 42,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    _brandLogo(size: 59),
+                    const SizedBox(width: 14),
+                    _brandName(),
+                  ],
+                ),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 13,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0x1FEF4444),
+                    borderRadius: BorderRadius.circular(30),
+                    border: Border.all(color: const Color(0x55EF4444)),
+                  ),
+                  child: const Text(
+                    'GESTIÓN COMERCIAL INTELIGENTE',
+                    style: TextStyle(
+                      color: Color(0xFFFCA5A5),
+                      fontSize: 10,
+                      letterSpacing: 1.3,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 22),
+                const Text(
+                  'Tu negocio,\nbajo control.',
+                  style: TextStyle(
+                    fontSize: 47,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -1.7,
+                    height: 1.08,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                const Text(
+                  'Administra productos, clientes y ventas '
+                  'desde un solo lugar, de forma fácil y organizada.',
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: Color(0xFFB8BBC5),
+                    height: 1.65,
+                  ),
+                ),
+                const SizedBox(height: 32),
+                _feature(Icons.inventory_2_outlined, 'Control de inventario'),
+                _feature(Icons.groups_outlined, 'Gestión de clientes'),
+                _feature(Icons.insights_outlined, 'Resumen de ventas'),
+                const Spacer(),
+                const Text(
+                  'ELECTROHOGAR  •  SISTEMA DE VENTAS E INVENTARIO',
+                  style: TextStyle(
+                    color: Color(0xFF8D919B),
+                    fontSize: 10,
+                    letterSpacing: 1.1,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _mobileBrand() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(25, 34, 25, 30),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFF111114), Color(0xFF380D12)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _brandLogo(size: 52),
+              const SizedBox(width: 13),
+              _brandName(fontSize: 25),
+            ],
+          ),
+          const SizedBox(height: 22),
+          const Text(
+            'Sistema de Ventas e Inventario',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Color(0xFFD1D5DB),
+              fontSize: 13,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _loginForm() {
+    const text = Color(0xFF171717);
+    const muted = Color(0xFF6B7280);
+    const red = Color(0xFFDC2626);
+
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 450),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 28,
+            vertical: 40,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                'BIENVENIDO DE NUEVO',
+                style: TextStyle(
+                  color: red,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1.7,
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Iniciar sesión',
+                style: TextStyle(
+                  fontSize: 34,
+                  fontWeight: FontWeight.w900,
+                  color: text,
+                  letterSpacing: -.9,
+                ),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                'Ingresa tus credenciales para acceder al sistema ElectroHogar.',
+                style: TextStyle(
+                  color: muted,
+                  fontSize: 14,
+                  height: 1.55,
+                ),
+              ),
+              const SizedBox(height: 34),
+              const Text(
+                'Usuario',
+                style: TextStyle(
+                  color: text,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 9),
+              TextField(
+                controller: usuarioCtrl,
+                autofillHints: const [AutofillHints.username],
+                textInputAction: TextInputAction.next,
+                decoration: InputDecoration(
+                  hintText: 'Ingresa tu usuario',
+                  prefixIcon: const Icon(Icons.person_outline),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 17,
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(13),
+                    borderSide: const BorderSide(color: Color(0xFFE4E4E7)),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 21),
+              const Text(
+                'Contraseña',
+                style: TextStyle(
+                  color: text,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 9),
+              TextField(
+                controller: passwordCtrl,
+                obscureText: ocultar,
+                autofillHints: const [AutofillHints.password],
+                onSubmitted: (_) => ingresar(),
+                decoration: InputDecoration(
+                  hintText: 'Ingresa tu contraseña',
+                  prefixIcon: const Icon(Icons.lock_outline),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 17,
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(13),
+                    borderSide: const BorderSide(color: Color(0xFFE4E4E7)),
+                  ),
+                  suffixIcon: IconButton(
+                    tooltip: ocultar
+                        ? 'Mostrar contraseña'
+                        : 'Ocultar contraseña',
+                    onPressed: () => setState(() => ocultar = !ocultar),
+                    icon: Icon(
+                      ocultar
+                          ? Icons.visibility_outlined
+                          : Icons.visibility_off_outlined,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Align(
+                alignment: Alignment.centerRight,
+                child: Text(
+                  '¿Olvidaste tu acceso? Consulta con el administrador.',
+                  textAlign: TextAlign.right,
+                  style: TextStyle(color: muted, fontSize: 11.5),
+                ),
+              ),
+              if (error != null) ...[
+                const SizedBox(height: 18),
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF1F2),
+                    border: Border.all(color: const Color(0xFFFECACA)),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(
+                        Icons.error_outline,
+                        color: Color(0xFFB91C1C),
+                        size: 20,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          error!,
+                          style: const TextStyle(
+                            color: Color(0xFF991B1B),
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              const SizedBox(height: 28),
+              SizedBox(
+                height: 55,
+                child: FilledButton(
+                  onPressed: cargando ? null : ingresar,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: red,
+                    disabledBackgroundColor: const Color(0xFFB74C4C),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(13),
+                    ),
+                    elevation: 2,
+                  ),
+                  child: cargando
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'Ingresar al sistema',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 15,
+                              ),
+                            ),
+                            SizedBox(width: 10),
+                            Icon(Icons.arrow_forward_rounded, size: 19),
+                          ],
+                        ),
+                ),
+              ),
+              const SizedBox(height: 25),
+              const Row(
+                children: [
+                  Expanded(child: Divider(color: Color(0xFFE5E7EB))),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 13),
+                    child: Text(
+                      'Acceso para usuarios autorizados',
+                      style: TextStyle(color: muted, fontSize: 11),
+                    ),
+                  ),
+                  Expanded(child: Divider(color: Color(0xFFE5E7EB))),
+                ],
+              ),
+              const SizedBox(height: 27),
+              const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.verified_user_outlined,
+                      color: Color(0xFF16A34A), size: 18),
+                  SizedBox(width: 8),
+                  Text(
+                    'Administrador  •  Vendedor  •  Cliente',
+                    style: TextStyle(
+                      color: muted,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 28),
+              const Text(
+                '© 2026 ElectroHogar. Todos los derechos reservados.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Color(0xFF9CA3AF), fontSize: 10),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 430),
-              child: Card(
-                elevation: 8,
-                clipBehavior: Clip.antiAlias,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                child: Column(
-                  children: [
-                    Container(
-                      width: double.infinity,
-                      color: const Color(0xFF0A0A0A),
-                      padding: const EdgeInsets.all(28),
-                      child: Column(
-                        children: [
-                          Container(
-                            width: 84,
-                            height: 84,
-                            padding: const EdgeInsets.all(5),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(18),
-                            ),
-                            child: Image.asset(
-                              'assets/logo-electrohogar.jpg',
-                              fit: BoxFit.contain,
-                            ),
-                          ),
-                          const SizedBox(height: 14),
-                          const Text(
-                            'ElectroHogar',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 25,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          const Text(
-                            'Sistema de Ventas e Inventario',
-                            style: TextStyle(color: Color(0xFFD4D4D4)),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.all(28),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          const Text(
-                            'Iniciar sesión',
-                            style: TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                          const SizedBox(height: 18),
-                          TextField(
-                            controller: usuarioCtrl,
-                            textInputAction: TextInputAction.next,
-                            decoration: const InputDecoration(
-                              labelText: 'Usuario',
-                              prefixIcon: Icon(Icons.person_outline),
-                            ),
-                          ),
-                          const SizedBox(height: 14),
-                          TextField(
-                            controller: passwordCtrl,
-                            obscureText: ocultar,
-                            onSubmitted: (_) => ingresar(),
-                            decoration: InputDecoration(
-                              labelText: 'Contraseña',
-                              prefixIcon: const Icon(Icons.lock_outline),
-                              suffixIcon: IconButton(
-                                onPressed: () {
-                                  setState(() => ocultar = !ocultar);
-                                },
-                                icon: Icon(
-                                  ocultar
-                                      ? Icons.visibility_outlined
-                                      : Icons.visibility_off_outlined,
-                                ),
-                              ),
-                            ),
-                          ),
-                          if (error != null) ...[
-                            const SizedBox(height: 14),
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFFEF2F2),
-                                border: Border.all(
-                                  color: const Color(0xFFFECACA),
-                                ),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Text(
-                                error!,
-                                style: const TextStyle(
-                                  color: Color(0xFF991B1B),
-                                ),
+      backgroundColor: const Color(0xFFFAFAFA),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final wide = constraints.maxWidth >= 900;
+          final minHeight =
+              constraints.maxHeight < 710 ? 710.0 : constraints.maxHeight;
+          return SingleChildScrollView(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1440),
+                child: wide
+                    ? SizedBox(
+                        height: minHeight,
+                        child: Row(
+                          children: [
+                            Expanded(flex: 11, child: _desktopBrand()),
+                            Expanded(
+                              flex: 10,
+                              child: ColoredBox(
+                                color: Colors.white,
+                                child: _loginForm(),
                               ),
                             ),
                           ],
-                          const SizedBox(height: 18),
-                          FilledButton.icon(
-                            onPressed: cargando ? null : ingresar,
-                            icon: cargando
-                                ? const SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child: CircularProgressIndicator(
-                                      color: Colors.white,
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : const Icon(Icons.login),
-                            label: Text(
-                              cargando ? 'Ingresando...' : 'Ingresar',
-                            ),
+                        ),
+                      )
+                    : Column(
+                        children: [
+                          _mobileBrand(),
+                          Container(
+                            color: Colors.white,
+                            width: double.infinity,
+                            child: _loginForm(),
                           ),
                         ],
                       ),
-                    ),
-                  ],
-                ),
               ),
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }
