@@ -1,6 +1,13 @@
 <?php
 header("Content-Type: application/json; charset=UTF-8");
-header("Access-Control-Allow-Origin: *");
+// Chrome Flutter (puerto 7357): permitir la sesion PHP solo desde orígenes locales autorizados.
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+$localOrigins = ['http://localhost:7357', 'http://127.0.0.1:7357'];
+if (in_array($origin, $localOrigins, true)) {
+    header('Access-Control-Allow-Origin: ' . $origin);
+    header('Access-Control-Allow-Credentials: true');
+    header('Vary: Origin');
+}
 header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Authorization");
 
