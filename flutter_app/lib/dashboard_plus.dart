@@ -658,8 +658,8 @@ class _ElectroDashboardPlusState extends State<ElectroDashboardPlus> {
                       ),
                       const SizedBox(height: 6),
                       Container(
-                        height: 12 +
-                            145 *
+                        height: 12.0 +
+                            145.0 *
                                 ((double.tryParse((m['ingresos'] ?? 0).toString()) ??
                                         0) /
                                     maxValue),
