@@ -52,6 +52,25 @@ $apiUrl = "http://localhost/$folder/api"
 Write-Host "API: $apiUrl" -ForegroundColor Cyan
 Write-Host 'Enciende Apache y MySQL desde XAMPP.' -ForegroundColor Yellow
 
+# Avisar si el servidor local no responde antes de compilar Flutter.
+try {
+    $r = Invoke-WebRequest -Uri "$apiUrl/login.php" -Method GET -UseBasicParsing -TimeoutSec 7 -ErrorAction Stop
+    if ($r.Content -notmatch 'M[eé]todo no permitido') {
+        Write-Host "Aviso: la API respondio, pero comprueba su contenido en $apiUrl/login.php" -ForegroundColor Yellow
+    }
+} catch {
+    $status = $null
+    if ($_.Exception.Response) {
+        try { $status = [int]$_.Exception.Response.StatusCode } catch {}
+    }
+    if ($status -ne 405) {
+        throw "No se pudo acceder a $apiUrl/login.php. Abre XAMPP, enciende Apache y comprueba la carpeta $folder."
+    }
+}
+
+# Con una laptop de 8 GB es mejor cerrar el emulador antes de usar Chrome.
+Write-Host 'Usaremos Google Chrome. No es necesario abrir Android Studio ni el emulador.' -ForegroundColor Green
+
 & $flutterExe config --enable-web
 if ($LASTEXITCODE -ne 0) { throw 'Fallo flutter config.' }
 
