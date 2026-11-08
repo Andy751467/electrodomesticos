@@ -1,44 +1,39 @@
-# ElectroHogar Mobile - Flutter
+# ElectroHogar - Flutter Web en Chrome y localhost
 
-La pagina web principal sigue funcionando con PHP + MySQL.
+Este paquete se conecta al backend PHP/MySQL existente en XAMPP. No requiere Android Studio ni emulador.
 
-Esta carpeta agrega una aplicacion movil Flutter conectada a la misma API.
+## Funciones del proyecto
+- Login de ElectroHogar conectado a api/login.php.
+- Sesion PHP persistida mediante cookies en Chrome.
+- Dashboard de productos, clientes, ventas, ingresos y stock bajo.
+- Consulta y busqueda de productos.
+- Cerrar sesion.
+- Colores negro y rojo.
 
-## Incluye
+## Requisitos
+- Windows, Chrome y Flutter SDK.
+- Apache y MySQL encendidos en XAMPP.
+- Base de datos venta_electrodomesticos correctamente instalada.
 
-- Login usando los mismos usuarios de ElectroHogar.
-- Sesion PHP reutilizada desde Flutter.
-- Dashboard con productos, clientes, ventas, ingresos y stock bajo.
-- Listado y busqueda de productos.
-- Paleta negro y rojo.
-- Cierre de sesion.
+## Ejecutar en Google Chrome
 
-## Preparar el proyecto
+Abre PowerShell dentro de flutter_app y ejecuta este unico comando:
 
-Abre PowerShell en:
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File ".\run_chrome.ps1"
+```
 
-C:\xampp\htdocs\electrodomesticos_git\flutter_app
+El script busca Flutter instalado, configura Flutter Web, crea plataforma web si hace falta, instala dependencias y abre Chrome en http://localhost:7357.
 
-Ejecuta:
+## Conexion con PHP
 
-.\setup.ps1
+El script usa el nombre de la carpeta padre de flutter_app para formar la API, por ejemplo:
+http://localhost/electrohogar_profesor/api
 
-Luego inicia un emulador Android y ejecuta:
+Antes de iniciar, comprueba que puedes abrir http://localhost/electrohogar_profesor/ en Chrome. Si el proyecto usa otra carpeta en htdocs, el script la detectara.
 
-flutter run
+El script cambia solo la cabecera CORS antigua de config/helpers.php si sigue usando un asterisco (wildcard), y antes guarda una copia *.copia_antes_flutter. Flutter Web envia la cookie PHPSESSID usando BrowserClient con credenciales.
 
-## Conexion con XAMPP
+Para desarrollo usa la misma palabra localhost para Chrome y la API. Esto no necesita 10.0.2.2 (solo Android).
 
-Para el emulador Android se usa:
-
-http://10.0.2.2/electrodomesticos/api
-
-10.0.2.2 representa el localhost de tu computadora desde el emulador Android.
-
-Si usas un celular fisico conectado al mismo Wi-Fi, ejecuta Flutter indicando la IP local de tu PC:
-
-flutter run --dart-define=API_URL=http://TU_IP/electrodomesticos/api
-
-Ejemplo:
-
-flutter run --dart-define=API_URL=http://192.168.1.20/electrodomesticos/api
+Importante: configura contrasenas seguras antes de usar este proyecto fuera de localhost.
