@@ -32,29 +32,130 @@ if($method==="GET"){
     responder(true,"Lista de productos",$db->query("SELECT p.*,c.nombre categoria FROM productos p LEFT JOIN categorias c ON c.id=p.categoria_id ORDER BY p.id DESC")->fetchAll());
 }
 
+
+// Validación centralizada: el servidor nunca confía en los valores de Flutter.
+function validarProducto(PDO $db, array $d, bool $nuevo = false): array {
+    requerido($d,["categoria_id","codigo_sku","nombre","marca","precio","stock","stock_minimo"]);
+    $categoria = filter_var($d["categoria_id"], FILTER_VALIDATE_INT);
+    if ($categoria === false || $categoria < 1) {
+        responder(false,"Selecciona una categoría válida",null,422);
+    }
+
+    $cat = $db->prepare("SELECT COUNT(*) FROM categorias WHERE id=?");
+    $cat->execute([$categoria]);
+    if (!(int)$cat->fetchColumn()) {
+        responder(false,"La categoría seleccionada no existe",null,422);
+    }
+
+    $sku = strtoupper(trim((string)$d["codigo_sku"]));
+    if (!preg_match('/^[A-Z0-9_-]{2,50}$/', $sku)) {
+        responder(false,"El SKU debe tener entre 2 y 50 letras, números o guiones",null,422);
+    }
+    $nombre = trim((string)$d["nombre"]);
+    $marca = trim((string)$d["marca"]);
+    $modelo = trim((string)($d["modelo"] ?? ""));
+    $descripcion = trim((string)($d["descripcion"] ?? ""));
+    $imagen = trim((string)($d["imagen"] ?? ""));
+
+    if ($nombre === "" || mb_strlen($nombre) > 120 ||
+        $marca === "" || mb_strlen($marca) > 80 ||
+        mb_strlen($modelo) > 80 || mb_strlen($imagen) > 255) {
+        responder(false,"Nombre, marca, modelo o imagen tienen longitud inválida",null,422);
+    }
+
+    $precioTexto = str_replace(",",".",(string)$d["precio"]);
+    if (!preg_match('/^\d+(\.\d{1,2})?$/',$precioTexto) ||
+        (float)$precioTexto > 99999999.99) {
+        responder(false,"El precio debe ser positivo y tener máximo dos decimales",null,422);
+    }
+
+    foreach (["stock", "stock_minimo"] as $campo) {
+        $n = filter_var($d[$campo], FILTER_VALIDATE_INT);
+        if ($n === false || $n < 0 || $n > 100000000) {
+            responder(false, "El campo '$campo' debe ser un entero no negativo",null,422);
+        }
+    }
+    $estado = isset($d["estado"]) ? filter_var($d["estado"], FILTER_VALIDATE_INT) : 1;
+    if ($estado !== 0 && $estado !== 1) {
+        responder(false,"Estado de producto inválido",null,422);
+    }
+
+    return [
+        "categoria_id" => (int)$categoria,
+        "codigo_sku" => $sku,
+        "nombre" => $nombre,
+        "marca" => $marca,
+        "modelo" => $modelo !== "" ? $modelo : null,
+        "precio" => (float)$precioTexto,
+        "stock" => (int)$d["stock"],
+        "stock_minimo" => (int)$d["stock_minimo"],
+        "descripcion" => $descripcion !== "" ? $descripcion : null,
+        "imagen" => $imagen !== "" ? $imagen : null,
+        "estado" => (int)$estado
+    ];
+}
+
 if($method==="POST"){
-    $d=jsonInput(); requerido($d,["categoria_id","codigo_sku","nombre","marca","precio","stock"]);
-    if((float)$d["precio"]<0 || (int)$d["stock"]<0 || (int)($d["stock_minimo"]??5)<0) responder(false,"Precio, stock y stock mínimo no pueden ser negativos",null,422);
-    $s=$db->prepare("INSERT INTO productos(categoria_id,codigo_sku,nombre,marca,modelo,precio,stock,stock_minimo,descripcion,imagen,estado) VALUES(?,?,?,?,?,?,?,?,?,?,1)");
-    $s->execute([(int)$d["categoria_id"],strtoupper(trim($d["codigo_sku"])),$d["nombre"],$d["marca"],$d["modelo"]??null,(float)$d["precio"],(int)$d["stock"],(int)($d["stock_minimo"]??5),$d["descripcion"]??null,$d["imagen"]??null]);
-    responder(true,"Producto registrado",["id"=>(int)$db->lastInsertId()],201);
+    $d = validarProducto($db, jsonInput(), true);
+    try {
+        $s=$db->prepare("INSERT INTO productos(categoria_id,codigo_sku,nombre,marca,modelo,precio,stock,stock_minimo,descripcion,imagen,estado) VALUES(?,?,?,?,?,?,?,?,?,?,?)");
+        $s->execute([
+            $d["categoria_id"],$d["codigo_sku"],$d["nombre"],$d["marca"],
+            $d["modelo"],$d["precio"],$d["stock"],$d["stock_minimo"],
+            $d["descripcion"],$d["imagen"],$d["estado"]
+        ]);
+        responder(true,"Producto registrado correctamente",["id"=>(int)$db->lastInsertId()],201);
+    } catch(PDOException $e) {
+        if($e->getCode()==="23000") {
+            responder(false,"El SKU ya existe o la categoría es inválida",null,409);
+        }
+        responder(false,"No se pudo registrar el producto",null,500);
+    }
 }
 
 if($method==="PUT"){
-    $d=jsonInput(); requerido($d,["id","categoria_id","codigo_sku","nombre","marca","precio","stock"]);
-    $s=$db->prepare("UPDATE productos SET categoria_id=?,codigo_sku=?,nombre=?,marca=?,modelo=?,precio=?,stock=?,stock_minimo=?,descripcion=?,imagen=?,estado=? WHERE id=?");
-    $s->execute([(int)$d["categoria_id"],strtoupper(trim($d["codigo_sku"])),$d["nombre"],$d["marca"],$d["modelo"]??null,(float)$d["precio"],(int)$d["stock"],(int)($d["stock_minimo"]??5),$d["descripcion"]??null,$d["imagen"]??null,isset($d["estado"])?(int)$d["estado"]:1,(int)$d["id"]]);
-    responder(true,"Producto actualizado");
+    $d = jsonInput();
+    requerido($d,["id"]);
+    $id = filter_var($d["id"],FILTER_VALIDATE_INT);
+    if ($id===false || $id<1) responder(false,"ID inválido",null,422);
+    $actual = $db->prepare("SELECT id FROM productos WHERE id=?");
+    $actual->execute([$id]);
+    if (!$actual->fetch()) responder(false,"Producto no encontrado",null,404);
+    $d = validarProducto($db,$d);
+    try {
+        $s=$db->prepare("UPDATE productos SET categoria_id=?,codigo_sku=?,nombre=?,marca=?,modelo=?,precio=?,stock=?,stock_minimo=?,descripcion=?,imagen=?,estado=? WHERE id=?");
+        $s->execute([
+            $d["categoria_id"],$d["codigo_sku"],$d["nombre"],$d["marca"],
+            $d["modelo"],$d["precio"],$d["stock"],$d["stock_minimo"],
+            $d["descripcion"],$d["imagen"],$d["estado"],(int)$id
+        ]);
+        responder(true,"Producto actualizado correctamente");
+    } catch(PDOException $e) {
+        if($e->getCode()==="23000") {
+            responder(false,"El SKU ya existe o la categoría es inválida",null,409);
+        }
+        responder(false,"No se pudo actualizar el producto",null,500);
+    }
 }
 
 if($method==="DELETE"){
     $d=jsonInput(); requerido($d,["id"]);
-    try{
-        $s=$db->prepare("DELETE FROM productos WHERE id=?"); $s->execute([(int)$d["id"]]);
-        responder(true,"Producto eliminado");
-    }catch(PDOException $e){
-        $s=$db->prepare("UPDATE productos SET estado=0 WHERE id=?"); $s->execute([(int)$d["id"]]);
-        responder(true,"Producto desactivado porque ya tiene movimientos");
+    $id=filter_var($d["id"],FILTER_VALIDATE_INT);
+    if($id===false || $id<1) responder(false,"ID inválido",null,422);
+    $check=$db->prepare("SELECT id FROM productos WHERE id=?");
+    $check->execute([$id]);
+    if(!$check->fetch()) responder(false,"Producto no encontrado",null,404);
+    try {
+        $s=$db->prepare("DELETE FROM productos WHERE id=?");
+        $s->execute([$id]);
+        responder(true,"Producto eliminado correctamente");
+    } catch(PDOException $e) {
+        if($e->getCode()!=="23000") {
+            responder(false,"No se pudo eliminar el producto",null,500);
+        }
+        $s=$db->prepare("UPDATE productos SET estado=0 WHERE id=?");
+        $s->execute([$id]);
+        responder(true,"Producto desactivado para conservar el historial de ventas");
     }
 }
 responder(false,"Método no permitido",null,405);
