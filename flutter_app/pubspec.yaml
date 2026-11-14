@@ -15,8 +15,17 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  flutter_launcher_icons: ^0.14.4
 
 flutter:
   uses-material-design: true
   assets:
     - assets/logo-electrohogar.jpg
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: assets/logo-electrohogar.jpg
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: assets/logo-electrohogar.jpg
+  min_sdk_android: 21
