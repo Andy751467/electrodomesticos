@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'productos_crud.dart';
 
 const _black = Color(0xFF101114);
 const _red = Color(0xFFDC2626);
@@ -42,6 +43,8 @@ class ElectroDashboardPlus extends StatefulWidget {
     required this.usuario,
     required this.loadDashboard,
     required this.loadProducts,
+    required this.saveProduct,
+    required this.deleteProduct,
     required this.loadModule,
     required this.createClient,
     required this.loadSale,
@@ -51,6 +54,8 @@ class ElectroDashboardPlus extends StatefulWidget {
   final Map<String, dynamic> usuario;
   final Future<Map<String, dynamic>> Function() loadDashboard;
   final Future<List<dynamic>> Function() loadProducts;
+  final Future<String> Function(Map<String, dynamic>, int?) saveProduct;
+  final Future<String> Function(int) deleteProduct;
   final Future<List<dynamic>> Function(String endpoint) loadModule;
   final Future<void> Function(Map<String, dynamic> cliente) createClient;
   final Future<Map<String, dynamic>> Function(int id) loadSale;
@@ -847,16 +852,14 @@ class _ElectroDashboardPlusState extends State<ElectroDashboardPlus> {
   Widget listModule() {
     final id = section;
     if (id == 'productos') {
-      return _CollectionPage(
+      return ProductosCrudPage(
         key: ValueKey('productos-' + revision.toString()),
-        title: 'Productos',
-        subtitle: 'Catálogo y precios de tu negocio',
-        icon: Icons.inventory_2_outlined,
-        load: widget.loadProducts,
-        titleFor: (m) => _s(m['nombre']),
-        detailFor: (m) => 'SKU: ' + _s(m['codigo_sku']) +
-            ' · ' + _s(m['marca']) + ' · Stock: ' + _s(m['stock']),
-        valueFor: (m) => _money(m['precio']),
+        puedeEditar: role == 'admin',
+        cargarProductos: widget.loadProducts,
+        cargarCategorias: () => widget.loadModule('categorias.php'),
+        guardar: widget.saveProduct,
+        eliminar: widget.deleteProduct,
+        actualizarResumen: () { refresh(); },
       );
     }
     if (id == 'categorias') {
