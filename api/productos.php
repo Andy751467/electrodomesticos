@@ -57,9 +57,11 @@ function validarProducto(PDO $db, array $d, bool $nuevo = false): array {
     $descripcion = trim((string)($d["descripcion"] ?? ""));
     $imagen = trim((string)($d["imagen"] ?? ""));
 
-    if ($nombre === "" || mb_strlen($nombre) > 120 ||
-        $marca === "" || mb_strlen($marca) > 80 ||
-        mb_strlen($modelo) > 80 || mb_strlen($imagen) > 255) {
+    $largo = static fn(string $v): int => function_exists('mb_strlen')
+        ? mb_strlen($v,'UTF-8') : strlen($v);
+    if ($nombre === "" || $largo($nombre) > 120 ||
+        $marca === "" || $largo($marca) > 80 ||
+        $largo($modelo) > 80 || $largo($imagen) > 255) {
         responder(false,"Nombre, marca, modelo o imagen tienen longitud inválida",null,422);
     }
 
