@@ -129,6 +129,44 @@ class ApiService {
     return List<dynamic>.from(body['data'] ?? []);
   }
 
+  // Operaciones CRUD de productos; el backend exige rol de administrador.
+  Future<String> guardarProducto(Map<String, dynamic> datos, int? id) async {
+    final uri = Uri.parse(baseUrl + '/productos.php');
+    final payload = <String, dynamic>{
+      ...datos,
+      if (id != null) 'id': id,
+    };
+    final response = id == null
+        ? await _client.post(
+            uri, headers: headers, body: jsonEncode(payload),
+          ).timeout(const Duration(seconds: 15))
+        : await _client.put(
+            uri, headers: headers, body: jsonEncode(payload),
+          ).timeout(const Duration(seconds: 15));
+    final body = _decode(response.body);
+    if (response.statusCode < 200 ||
+        response.statusCode >= 300 ||
+        body['ok'] != true) {
+      throw Exception(body['mensaje'] ?? 'No se pudo guardar el producto');
+    }
+    return (body['mensaje'] ?? 'Producto guardado').toString();
+  }
+
+  Future<String> eliminarProducto(int id) async {
+    final response = await _client.delete(
+      Uri.parse(baseUrl + '/productos.php'),
+      headers: headers,
+      body: jsonEncode({'id': id}),
+    ).timeout(const Duration(seconds: 15));
+    final body = _decode(response.body);
+    if (response.statusCode < 200 ||
+        response.statusCode >= 300 ||
+        body['ok'] != true) {
+      throw Exception(body['mensaje'] ?? 'No se pudo eliminar el producto');
+    }
+    return (body['mensaje'] ?? 'Producto eliminado').toString();
+  }
+
   // Consultas de los módulos del dashboard.
   Future<List<dynamic>> listarModulo(String archivo) async {
     const permitidos = {
@@ -246,6 +284,8 @@ class _LoginPageState extends State<LoginPage> {
             usuario: usuario,
             loadDashboard: () => ApiService.instance.dashboard(),
             loadProducts: () => ApiService.instance.productos(),
+            saveProduct: ApiService.instance.guardarProducto,
+            deleteProduct: ApiService.instance.eliminarProducto,
             loadModule: ApiService.instance.listarModulo,
             createClient: ApiService.instance.crearCliente,
             loadSale: ApiService.instance.detalleVenta,
