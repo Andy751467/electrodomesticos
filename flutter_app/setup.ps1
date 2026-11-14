@@ -32,6 +32,10 @@ Copy-Item $manifest $targetManifest -Force
 & $flutter pub get
 if ($LASTEXITCODE -ne 0) { throw "No se pudieron instalar las dependencias Flutter." }
 
+# Generar el icono de Android usando el logo de ElectroHogar.
+& $flutter pub run flutter_launcher_icons
+if ($LASTEXITCODE -ne 0) { throw "No se pudo generar el icono Android." }
+
 Write-Host ""
 Write-Host "Proyecto Android preparado." -ForegroundColor Green
 Write-Host "Para generar el APK de prueba ejecuta:" -ForegroundColor Yellow
