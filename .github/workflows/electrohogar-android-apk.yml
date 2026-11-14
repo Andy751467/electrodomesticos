@@ -39,6 +39,7 @@ jobs:
           flutter create --platforms=android --org com.electrohogar --project-name electrohogar_mobile .
           cp config/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
           flutter pub get
+          dart run flutter_launcher_icons
 
       - name: Comprobar código Dart
         working-directory: flutter_app
