@@ -137,19 +137,19 @@ class _ProductosCrudPageState extends State<ProductosCrudPage> {
     final marca = TextEditingController(text: texto(p?['marca']));
     final modelo = TextEditingController(text: texto(p?['modelo']));
     final precio = TextEditingController(
-        text: editando ? decimal(p['precio']).toStringAsFixed(2) : '');
+        text: editando ? decimal(p?['precio']).toStringAsFixed(2) : '');
     final stock = TextEditingController(
-        text: editando ? texto(p['stock'], '0') : '0');
+        text: editando ? texto(p?['stock'], '0') : '0');
     final minimo = TextEditingController(
-        text: editando ? texto(p['stock_minimo'], '5') : '5');
+        text: editando ? texto(p?['stock_minimo'], '5') : '5');
     final descripcion =
         TextEditingController(text: texto(p?['descripcion']));
-    int? categoria = editando ? numero(p['categoria_id']) : null;
+    int? categoria = editando ? numero(p?['categoria_id']) : null;
     if (categoria != null &&
         !categorias.any((c) => numero(c['id']) == categoria)) {
       categoria = null;
     }
-    bool habilitado = editando ? activo(p) : true;
+    bool habilitado = p != null ? activo(p) : true;
     bool guardando = false;
     String? fallo;
 
@@ -353,9 +353,9 @@ class _ProductosCrudPageState extends State<ProductosCrudPage> {
                       'stock': int.parse(stock.text.trim()),
                       'stock_minimo': int.parse(minimo.text.trim()),
                       'descripcion': descripcion.text.trim(),
-                      'imagen': editando ? p['imagen'] : null,
+                      'imagen': p?['imagen'],
                       'estado': habilitado ? 1 : 0,
-                    }, editando ? numero(p['id']) : null);
+                    }, editando ? numero(p?['id']) : null);
                     if (dialogContext.mounted) {
                       Navigator.pop(dialogContext, res);
                     }
