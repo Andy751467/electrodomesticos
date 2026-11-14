@@ -8,6 +8,10 @@ on:
       - 'flutter_app/**'
       - '.github/workflows/electrohogar-android-apk.yml'
 
+concurrency:
+  group: electrohogar-apk-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
