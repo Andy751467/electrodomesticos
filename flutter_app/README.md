@@ -67,3 +67,39 @@ Después ejecuta en flutter_app:
   flutter run -d chrome --web-hostname localhost --web-port 7357 --dart-define=API_URL=http://localhost/electrohogar_profesor/api
 
 Antes de abrir la app, inicia Apache y MySQL en XAMPP.
+
+
+## CRUD de Productos Flutter (noviembre 2026)
+
+En Chrome, entra con un usuario con rol **admin** y abre «Productos».
+
+- Registrar: botón «Nuevo producto» con SKU único, categoría, nombre, marca,
+  modelo, precio, stock, stock mínimo y descripción.
+- Listar: tarjetas con datos leídos desde MySQL, precio y existencias.
+- Buscar y filtrar: SKU, nombre, marca, categoría, activos, inactivos y stock bajo.
+- Editar: botón «Editar producto»; permite actualizar datos y reactivar uno inactivo.
+- Eliminar: menú de tres puntos > «Eliminar o desactivar», con confirmación.
+  Si el producto tiene movimientos de ventas, se desactiva en lugar de borrar
+  su historial.
+- Solo el administrador puede crear, modificar o eliminar; vendedor y cliente
+  pueden consultar productos. PHP verifica los permisos incluso si se manipula
+  la interfaz.
+- El backend valida rangos y responde con mensajes claros ante SKU duplicado.
+
+### Archivos involucrados
+
+- flutter_app/lib/productos_crud.dart (pantalla nueva)
+- flutter_app/lib/dashboard_plus.dart (acceso desde el menú)
+- flutter_app/lib/main.dart (POST, PUT y DELETE a api/productos.php)
+- api/productos.php (validación, persistencia y errores HTTP)
+
+### Prueba local
+
+Con Apache y MySQL encendidos, inicia Flutter Web y entra en Productos.
+Registra un producto de prueba con SKU diferente, edítalo y prueba
+desactivarlo o eliminarlo. Comprueba desde phpMyAdmin que los cambios
+se reflejen en la tabla productos y que el dashboard se actualice.
+
+Para usar los cambios en una laptop que ya tenga el proyecto, primero
+sincroniza esos cuatro archivos desde la rama main de GitHub. El código
+en GitHub no cambia automáticamente los archivos locales.
