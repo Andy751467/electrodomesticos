@@ -171,7 +171,7 @@ class _ProductosCrudPageState extends State<ProductosCrudPage> {
     String? fallo;
 
     try {
-      final resultado = await showDialog<String>(
+      final ruta = DialogRoute<String>(
         context: context,
         barrierDismissible: false,
         builder: (dialogContext) => StatefulBuilder(
@@ -446,6 +446,10 @@ class _ProductosCrudPageState extends State<ProductosCrudPage> {
           ),
         ),
       );
+      final resultado = await Navigator.of(context, rootNavigator: true)
+          .push<String>(ruta);
+      // La animación del diálogo debe terminar antes de liberar TextEditingControllers.
+      await ruta.completed;
       if (resultado != null && mounted) {
         mensaje(resultado);
         await cargar();
