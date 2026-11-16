@@ -44,6 +44,7 @@ class _ProductosCrudPageState extends State<ProductosCrudPage> {
   bool cargando = true;
   String? error;
   String filtro = 'todos';
+  String orden = 'recientes';
 
   @override
   void initState() {
@@ -109,7 +110,7 @@ class _ProductosCrudPageState extends State<ProductosCrudPage> {
 
   List<Map<String, dynamic>> get visibles {
     final q = buscar.text.trim().toLowerCase();
-    return productos.where((p) {
+    final filtrados = productos.where((p) {
       final match = switch (filtro) {
         'activos' => activo(p),
         'inactivos' => !activo(p),
@@ -122,6 +123,21 @@ class _ProductosCrudPageState extends State<ProductosCrudPage> {
       ].map((v) => texto(v).toLowerCase()).join(' ');
       return match && contenido.contains(q);
     }).toList();
+    switch (orden) {
+      case 'nombre':
+        filtrados.sort((a, b) => texto(a['nombre'])
+            .toLowerCase().compareTo(texto(b['nombre']).toLowerCase()));
+      case 'precio_asc':
+        filtrados.sort((a, b) => decimal(a['precio'])
+            .compareTo(decimal(b['precio'])));
+      case 'precio_desc':
+        filtrados.sort((a, b) => decimal(b['precio'])
+            .compareTo(decimal(a['precio'])));
+      case 'stock_asc':
+        filtrados.sort((a, b) => numero(a['stock'])
+            .compareTo(numero(b['stock'])));
+    }
+    return filtrados;
   }
 
   Future<void> formulario([Map<String, dynamic>? p]) async {
@@ -144,6 +160,7 @@ class _ProductosCrudPageState extends State<ProductosCrudPage> {
         text: editando ? texto(p?['stock_minimo'], '5') : '5');
     final descripcion =
         TextEditingController(text: texto(p?['descripcion']));
+    final imagen = TextEditingController(text: texto(p?['imagen']));
     int? categoria = editando ? numero(p?['categoria_id']) : null;
     if (categoria != null &&
         !categorias.any((c) => numero(c['id']) == categoria)) {
@@ -306,6 +323,52 @@ class _ProductosCrudPageState extends State<ProductosCrudPage> {
                           prefixIcon: Icon(Icons.notes_outlined),
                         ),
                       ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: imagen,
+                        maxLength: 255,
+                        keyboardType: TextInputType.url,
+                        autocorrect: false,
+                        decoration: const InputDecoration(
+                          labelText: 'URL de la imagen (opcional)',
+                          hintText: 'https://ejemplo.com/televisor.jpg',
+                          helperText: 'Pega un enlace público de la fotografía',
+                          prefixIcon: Icon(Icons.image_outlined),
+                          counterText: '',
+                        ),
+                        validator: (value) {
+                          final url = (value ?? '').trim();
+                          if (url.isEmpty) return null;
+                          final parsed = Uri.tryParse(url);
+                          if (parsed == null ||
+                              (parsed.scheme != 'http' &&
+                                  parsed.scheme != 'https') ||
+                              parsed.host.isEmpty) {
+                            return 'Ingresa una URL http:// o https:// válida';
+                          }
+                          return null;
+                        },
+                        onChanged: (_) => actualizarDialogo(() {}),
+                      ),
+                      if (imagen.text.trim().isNotEmpty) ...[
+                        const SizedBox(height: 10),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.network(
+                            imagen.text.trim(),
+                            width: double.infinity,
+                            height: 125,
+                            fit: BoxFit.contain,
+                            errorBuilder: (_, __, ___) => const Padding(
+                              padding: EdgeInsets.all(12),
+                              child: Text(
+                                'No se pudo mostrar la imagen. Revisa la URL.',
+                                style: TextStyle(color: _gris),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                       if (editando)
                         SwitchListTile.adaptive(
                           title: const Text('Producto activo'),
@@ -353,7 +416,7 @@ class _ProductosCrudPageState extends State<ProductosCrudPage> {
                       'stock': int.parse(stock.text.trim()),
                       'stock_minimo': int.parse(minimo.text.trim()),
                       'descripcion': descripcion.text.trim(),
-                      'imagen': p?['imagen'],
+                      'imagen': imagen.text.trim(),
                       'estado': habilitado ? 1 : 0,
                     }, editando ? numero(p?['id']) : null);
                     if (dialogContext.mounted) {
@@ -397,6 +460,7 @@ class _ProductosCrudPageState extends State<ProductosCrudPage> {
       stock.dispose();
       minimo.dispose();
       descripcion.dispose();
+      imagen.dispose();
     }
   }
 
@@ -463,6 +527,35 @@ class _ProductosCrudPageState extends State<ProductosCrudPage> {
     );
   }
 
+  Widget imagenProducto(Map<String, dynamic> p) {
+    final url = texto(p['imagen']);
+    final parsed = Uri.tryParse(url);
+    final valido = parsed != null &&
+        (parsed.scheme == 'http' || parsed.scheme == 'https') &&
+        parsed.host.isNotEmpty;
+    Widget alternativa() => Container(
+      height: 46,
+      width: 46,
+      decoration: BoxDecoration(
+        color: const Color(0xFFFEE2E2),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: const Icon(Icons.devices_other_outlined, color: _rojo),
+    );
+
+    if (!valido) return alternativa();
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: Image.network(
+        url,
+        height: 46,
+        width: 46,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => alternativa(),
+      ),
+    );
+  }
+
   Widget tarjeta(Map<String, dynamic> p) {
     return Card(
       elevation: 0,
@@ -478,14 +571,7 @@ class _ProductosCrudPageState extends State<ProductosCrudPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(children: [
-              Container(
-                height: 46, width: 46,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFEE2E2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(Icons.devices_other_outlined, color: _rojo),
-              ),
+              imagenProducto(p),
               const SizedBox(width: 11),
               Expanded(
                 child: Text(
@@ -648,6 +734,30 @@ class _ProductosCrudPageState extends State<ProductosCrudPage> {
                       onSelected: (_) => setState(() => filtro = f.$1),
                     ),
                 ]),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: orden,
+                  isExpanded: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Ordenar productos',
+                    prefixIcon: Icon(Icons.sort),
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 'recientes',
+                        child: Text('Más recientes')),
+                    DropdownMenuItem(value: 'nombre',
+                        child: Text('Nombre A-Z')),
+                    DropdownMenuItem(value: 'precio_asc',
+                        child: Text('Precio: menor a mayor')),
+                    DropdownMenuItem(value: 'precio_desc',
+                        child: Text('Precio: mayor a menor')),
+                    DropdownMenuItem(value: 'stock_asc',
+                        child: Text('Menor stock primero')),
+                  ],
+                  onChanged: (value) => setState(
+                    () => orden = value ?? 'recientes',
+                  ),
+                ),
               ],
             ),
           ),
