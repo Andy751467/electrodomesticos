@@ -448,6 +448,14 @@ class _ClienteCatalogoPageState extends State<ClienteCatalogoPage> {
         ]),
       ),
       const SizedBox(height: 24),
+      if (lista.isNotEmpty) ...[
+        _BannersPromocionales(
+          key: ValueKey(lista.map((p) => id(p)).join(',')),
+          productos: lista,
+          abrirProducto: detalle,
+        ),
+        const SizedBox(height: 24),
+      ],
       const Text('Categorías', style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold)),
       const SizedBox(height: 10),
       categorias(lista),
@@ -691,5 +699,231 @@ class _ClienteCatalogoPageState extends State<ClienteCatalogoPage> {
         ],
       ),
     );
+  }
+}
+
+
+// Carrusel de campañas visuales con productos y precios vigentes del catálogo.
+// No aplica descuentos ficticios ni modifica los precios de MySQL.
+class _BannersPromocionales extends StatefulWidget {
+  const _BannersPromocionales({
+    super.key,
+    required this.productos,
+    required this.abrirProducto,
+  });
+
+  final List<Map> productos;
+  final Future<void> Function(Map) abrirProducto;
+
+  @override
+  State<_BannersPromocionales> createState() => _BannersPromocionalesState();
+}
+
+class _BannersPromocionalesState extends State<_BannersPromocionales> {
+  final PageController _paginas = PageController();
+  int _actual = 0;
+
+  @override
+  void dispose() {
+    _paginas.dispose();
+    super.dispose();
+  }
+
+  String _texto(dynamic v) => (v ?? '').toString().trim();
+
+  bool _tieneFoto(Map p) {
+    final url = Uri.tryParse(_texto(p['imagen']));
+    return url != null &&
+        (url.scheme == 'http' || url.scheme == 'https') &&
+        url.host.isNotEmpty;
+  }
+
+  List<Map> _seleccionar() {
+    final orden = [
+      ...widget.productos.where(_tieneFoto),
+      ...widget.productos.where((p) => !_tieneFoto(p)),
+    ];
+    final salida = <Map>[];
+    final categorias = <String>{};
+    for (final p in orden) {
+      if (categorias.add(_texto(p['categoria']))) salida.add(p);
+      if (salida.length == 4) return salida;
+    }
+    for (final p in orden) {
+      if (!salida.contains(p)) salida.add(p);
+      if (salida.length == 4) break;
+    }
+    return salida;
+  }
+
+  void _ir(int destino) {
+    if (_paginas.hasClients) {
+      _paginas.animateToPage(destino,
+          duration: const Duration(milliseconds: 260),
+          curve: Curves.easeInOut);
+    }
+  }
+
+  Widget _visual(Map p) {
+    const alternativa = Center(
+      child: Icon(Icons.electrical_services_outlined,
+          color: Color(0xFFDC2626), size: 48),
+    );
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: ColoredBox(
+        color: Colors.white,
+        child: _tieneFoto(p)
+            ? Padding(
+                padding: const EdgeInsets.all(8),
+                child: Image.network(
+                  _texto(p['imagen']),
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => alternativa,
+                ),
+              )
+            : alternativa,
+      ),
+    );
+  }
+
+  Widget _banner(Map p, int i) {
+    const fondos = <List<Color>>[
+      [Color(0xFF171717), Color(0xFF991B1B)],
+      [Color(0xFF7F1D1D), Color(0xFFDC2626)],
+      [Color(0xFF111827), Color(0xFF374151)],
+      [Color(0xFF450A0A), Color(0xFFB91C1C)],
+    ];
+    const titulares = ['Renueva tu hogar', 'Encuentra tu favorito',
+      'Tecnología para tu día a día', 'Equipa tu hogar'];
+    final precio = double.tryParse(_texto(p['precio']));
+    final nombre = _texto(p['nombre']);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 2),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(20),
+        clipBehavior: Clip.antiAlias,
+        child: Ink(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(colors: fondos[i % fondos.length]),
+          ),
+          child: InkWell(
+            onTap: () => widget.abrirProducto(p),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: LayoutBuilder(builder: (context, caja) {
+                final escala = MediaQuery.textScalerOf(context).scale(14) / 14;
+                final vertical = caja.maxWidth < 250 || escala > 1.3;
+                final informacion = Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('PRODUCTO DESTACADO',
+                      maxLines: 2, overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: Color(0xFFFECACA),
+                        fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.7)),
+                    const SizedBox(height: 6),
+                    Text(titulares[i % titulares.length],
+                      maxLines: 2, overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: Colors.white,
+                        fontSize: 19, height: 1.12, fontWeight: FontWeight.w900)),
+                    const SizedBox(height: 7),
+                    Text(nombre.isEmpty ? 'Electrodoméstico' : nombre,
+                      maxLines: 2, overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: Colors.white70, fontSize: 13)),
+                    if (precio != null) ...[
+                      const SizedBox(height: 7),
+                      Text('S/ ${precio.toStringAsFixed(2)}',
+                        maxLines: 1, overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: Colors.white,
+                          fontSize: 20, fontWeight: FontWeight.w900)),
+                    ],
+                    const SizedBox(height: 9),
+                    Row(children: [
+                      const Flexible(child: Text('Ver producto',
+                        maxLines: 1, overflow: TextOverflow.ellipsis,
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700))),
+                      const SizedBox(width: 4),
+                      const Icon(Icons.arrow_forward_rounded, size: 17, color: Colors.white),
+                    ]),
+                  ],
+                );
+                if (vertical) {
+                  return Column(crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(flex: 3, child: _visual(p)),
+                      const SizedBox(height: 10),
+                      Expanded(flex: 6, child: SingleChildScrollView(child: informacion)),
+                    ]);
+                }
+                return Row(children: [
+                  Expanded(flex: 3, child: informacion),
+                  const SizedBox(width: 12),
+                  Expanded(flex: 2, child: SizedBox(
+                    height: caja.maxHeight * 0.84,
+                    child: _visual(p),
+                  )),
+                ]);
+              }),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final destacados = _seleccionar();
+    if (destacados.isEmpty) return const SizedBox.shrink();
+    final pagina = _actual.clamp(0, destacados.length - 1).toInt();
+    final escala = MediaQuery.textScalerOf(context).scale(14) / 14;
+    return LayoutBuilder(builder: (context, caja) {
+      final vertical = caja.maxWidth < 286 || escala > 1.3;
+      final altura = vertical
+          ? 380.0 + (escala > 1 ? (escala - 1) * 140.0 : 0.0)
+          : 230.0;
+      return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Text('Promociones y destacados',
+          style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 10),
+        SizedBox(
+          height: altura,
+          child: PageView.builder(
+            controller: _paginas,
+            itemCount: destacados.length,
+            onPageChanged: (i) => setState(() => _actual = i),
+            itemBuilder: (_, i) => _banner(destacados[i], i),
+          ),
+        ),
+        if (destacados.length > 1)
+          Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+            IconButton(
+              tooltip: 'Promoción anterior',
+              onPressed: pagina > 0 ? () => _ir(pagina - 1) : null,
+              icon: const Icon(Icons.chevron_left),
+            ),
+            for (var i = 0; i < destacados.length; i++)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 3),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  width: i == pagina ? 20 : 7,
+                  height: 7,
+                  decoration: BoxDecoration(
+                    color: i == pagina ? const Color(0xFFDC2626) : const Color(0xFFD1D5DB),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+            IconButton(
+              tooltip: 'Siguiente promoción',
+              onPressed: pagina < destacados.length - 1 ? () => _ir(pagina + 1) : null,
+              icon: const Icon(Icons.chevron_right),
+            ),
+          ]),
+      ]);
+    });
   }
 }
