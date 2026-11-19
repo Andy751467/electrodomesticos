@@ -395,7 +395,7 @@ class _ClienteCatalogoPageState extends State<ClienteCatalogoPage> {
         physics: const NeverScrollableScrollPhysics(),
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: columnas, crossAxisSpacing: 12, mainAxisSpacing: 12,
-          mainAxisExtent: 286 + (escala > 1 ? (escala - 1) * 120 : 0),
+          mainAxisExtent: 286.0 + (escala > 1 ? (escala - 1) * 120.0 : 0.0),
         ),
         itemCount: lista.length,
         itemBuilder: (_, i) => tarjeta(lista[i]),
