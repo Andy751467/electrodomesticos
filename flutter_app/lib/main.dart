@@ -284,35 +284,6 @@ class ApiService {
     }
   }
 
-  Future<Map<String, dynamic>> enviarPedido(Map<String, dynamic> datos) async {
-    final response = await _client.post(Uri.parse(baseUrl + '/pedidos.php'),
-      headers: headers, body: jsonEncode(datos)).timeout(const Duration(seconds: 20));
-    final body = _decode(response.body);
-    if ((response.statusCode != 200 && response.statusCode != 201) || body['ok'] != true) {
-      throw Exception(body['mensaje'] ?? 'No se pudo registrar el pedido');
-    }
-    return Map<String, dynamic>.from(body['data'] as Map);
-  }
-
-  Future<List<dynamic>> cargarPedidos() async {
-    final response = await _client.get(Uri.parse(baseUrl + '/pedidos.php'),
-      headers: headers).timeout(const Duration(seconds: 20));
-    final body = _decode(response.body);
-    if (response.statusCode != 200 || body['ok'] != true) {
-      throw Exception(body['mensaje'] ?? 'No se pudieron cargar los pedidos');
-    }
-    return List<dynamic>.from(body['data'] as List);
-  }
-
-  Future<void> revisarPedido(int id, String accion) async {
-    final response = await _client.put(Uri.parse(baseUrl + '/pedidos.php'),
-      headers: headers, body: jsonEncode({'id': id, 'accion': accion})).timeout(const Duration(seconds: 20));
-    final body = _decode(response.body);
-    if (response.statusCode != 200 || body['ok'] != true) {
-      throw Exception(body['mensaje'] ?? 'No se pudo revisar el pedido');
-    }
-  }
-
   Future<void> logout() async {
     try {
       await _client.post(
@@ -452,8 +423,6 @@ class _LoginPageState extends State<LoginPage> {
                   cerrarSesion: ApiService.instance.logout,
                   enviarPedido: ApiService.instance.enviarPedido,
                   cargarPedidos: ApiService.instance.cargarPedidos,
-                  enviarPedido: ApiService.instance.enviarPedido,
-                  cargarPedidos: ApiService.instance.cargarPedidos,
                 )
               : ElectroDashboardPlus(
             usuario: usuario,
@@ -464,8 +433,6 @@ class _LoginPageState extends State<LoginPage> {
             loadModule: ApiService.instance.listarModulo,
             createClient: ApiService.instance.crearCliente,
             loadSale: ApiService.instance.detalleVenta,
-            cargarPedidos: ApiService.instance.cargarPedidos,
-            revisarPedido: ApiService.instance.revisarPedido,
             cargarPedidos: ApiService.instance.cargarPedidos,
             revisarPedido: ApiService.instance.revisarPedido,
             logout: ApiService.instance.logout,
