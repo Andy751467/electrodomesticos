@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dashboard_plus.dart';
+import 'registro_cuenta.dart';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -126,7 +127,11 @@ class ApiService {
 
     final setCookie = response.headers['set-cookie'];
     if (setCookie != null && setCookie.isNotEmpty) {
-      _cookie = setCookie.split(';').first;
+      final cookies = RegExp(r'(?:^|,)\s*(PHPSESSID=[^;,\s]+)')
+          .allMatches(setCookie);
+      if (cookies.isNotEmpty) {
+        _cookie = cookies.last.group(1);
+      }
     }
 
     final body = _decode(response.body);
@@ -299,77 +304,66 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> configurarServidor() async {
-    final controller = TextEditingController(
-      text: ApiService.instance.baseUrl,
-    );
-    try {
-      final result = await showDialog<bool>(
-        context: context,
-        builder: (dialogContext) => AlertDialog(
-          title: const Text('Conectar con XAMPP'),
-          content: SizedBox(
-            width: 440,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Conecta el telefono y la laptop a la misma red Wi-Fi. '
-                  'Enciende Apache y MySQL en la computadora.',
-                ),
-                const SizedBox(height: 15),
-                TextField(
-                  controller: controller,
-                  keyboardType: TextInputType.url,
-                  autocorrect: false,
-                  decoration: const InputDecoration(
-                    labelText: 'URL del servidor PHP',
-                    hintText: 'http://192.168.1.5/electrohogar_profesor/api',
-                    prefixIcon: Icon(Icons.dns_outlined),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                const Text(
-                  'Usa la direccion IPv4 de la PC, no localhost '
-                  'ni 10.0.2.2 en un celular fisico.',
-                  style: TextStyle(color: Color(0xFF667085), fontSize: 12),
-                ),
-              ],
+    var nuevaUrl = ApiService.instance.baseUrl;
+    final guardado = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Conectar con XAMPP'),
+        content: SizedBox(
+          width: 440,
+          child: TextFormField(
+            initialValue: nuevaUrl,
+            onChanged: (valor) => nuevaUrl = valor,
+            keyboardType: TextInputType.url,
+            autocorrect: false,
+            decoration: const InputDecoration(
+              labelText: 'URL del servidor PHP',
+              prefixIcon: Icon(Icons.dns_outlined),
             ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Cancelar'),
-            ),
-            FilledButton(
-              onPressed: () async {
-                try {
-                  await ApiService.instance.changeServerUrl(controller.text);
-                  if (dialogContext.mounted) {
-                    Navigator.pop(dialogContext, true);
-                  }
-                } catch (e) {
-                  if (dialogContext.mounted) {
-                    ScaffoldMessenger.of(dialogContext).showSnackBar(
-                      SnackBar(content: Text(
-                        e.toString().replaceFirst('FormatException: ', ''),
-                      )),
-                    );
-                  }
-                }
-              },
-              child: const Text('Guardar'),
-            ),
-          ],
         ),
-      );
-      if (result == true && mounted) {
-        setState(() => error = null);
-      }
-    } finally {
-      controller.dispose();
-    }
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              try {
+                await ApiService.instance.changeServerUrl(nuevaUrl);
+                if (dialogContext.mounted) Navigator.pop(dialogContext, true);
+              } catch (e) {
+                if (dialogContext.mounted) {
+                  ScaffoldMessenger.of(dialogContext).showSnackBar(
+                    SnackBar(content: Text(e.toString())),
+                  );
+                }
+              }
+            },
+            child: const Text('Guardar'),
+          ),
+        ],
+      ),
+    );
+    if (guardado == true && mounted) setState(() => error = null);
+  }
+
+  Future<void> abrirRegistro() async {
+    FocusScope.of(context).unfocus();
+    final nuevoUsuario = await Navigator.of(context).push<String>(
+      MaterialPageRoute(builder: (_) => RegistroCuentaPage(
+        baseUrl: ApiService.instance.baseUrl,
+      )),
+    );
+    if (!mounted || nuevoUsuario == null) return;
+    setState(() {
+      usuarioCtrl.text = nuevoUsuario;
+      passwordCtrl.clear();
+      error = null;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Cuenta creada. Inicia sesión con tu contraseña.')),
+    );
   }
 
   Future<void> ingresar() async {
@@ -393,7 +387,13 @@ class _LoginPageState extends State<LoginPage> {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (_) => ElectroDashboardPlus(
+          builder: (_) => usuario['rol'] == 'cliente'
+              ? ClienteCatalogoPage(
+                  usuario: usuario,
+                  cargarProductos: () => ApiService.instance.productos(),
+                  cerrarSesion: ApiService.instance.logout,
+                )
+              : ElectroDashboardPlus(
             usuario: usuario,
             loadDashboard: () => ApiService.instance.dashboard(),
             loadProducts: () => ApiService.instance.productos(),
@@ -886,6 +886,13 @@ class _LoginPageState extends State<LoginPage> {
                           ],
                         ),
                 ),
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: cargando ? null : abrirRegistro,
+                icon: const Icon(Icons.person_add_alt_1),
+                label: const Text('Crear cuenta'),
+                style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(50)),
               ),
               const SizedBox(height: 25),
               const Row(
