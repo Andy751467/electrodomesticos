@@ -500,8 +500,18 @@ class _ClienteCatalogoPageState extends State<ClienteCatalogoPage> {
     );
     if (!mounted || resultado == null) return;
     setState(() { carrito.clear(); pestana = 0; });
-    mensaje('Pedido #${resultado['id']} registrado. Consulta Mis pedidos.');
-    abrirPedidos();
+    final pedidoId = resultado['id']?.toString();
+    if (pedidoId == null || pedidoId.isEmpty) {
+      mensaje('Pedido registrado. Consulta Mis pedidos.');
+      abrirPedidos();
+      return;
+    }
+    await Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => VoucherPedidoPage(
+        pedidoId: pedidoId,
+        cargar: widget.cargarPedidos,
+      ),
+    ));
   }
 
   void abrirPedidos() {
