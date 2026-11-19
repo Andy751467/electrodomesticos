@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'productos_crud.dart';
+import 'pedidos_page.dart';
 
 const _black = Color(0xFF101114);
 const _red = Color(0xFFDC2626);
@@ -32,6 +33,7 @@ const _sections = <_Section>[
   _Section('categorias', 'Categorías', Icons.category_outlined),
   _Section('clientes', 'Clientes', Icons.groups_2_outlined),
   _Section('ventas', 'Ventas', Icons.shopping_cart_outlined),
+  _Section('pedidos', 'Pedidos y pagos', Icons.payments_outlined),
   _Section('proveedores', 'Proveedores', Icons.local_shipping_outlined),
   _Section('stock', 'Alertas de stock', Icons.warning_amber_rounded),
   _Section('reportes', 'Reportes', Icons.bar_chart_rounded),
@@ -48,6 +50,8 @@ class ElectroDashboardPlus extends StatefulWidget {
     required this.loadModule,
     required this.createClient,
     required this.loadSale,
+    required this.cargarPedidos,
+    required this.revisarPedido,
     required this.logout,
   });
 
@@ -59,6 +63,8 @@ class ElectroDashboardPlus extends StatefulWidget {
   final Future<List<dynamic>> Function(String endpoint) loadModule;
   final Future<void> Function(Map<String, dynamic> cliente) createClient;
   final Future<Map<String, dynamic>> Function(int id) loadSale;
+  final CargarPedidos cargarPedidos;
+  final RevisarPedido revisarPedido;
   final Future<void> Function() logout;
 
   @override
@@ -238,7 +244,7 @@ class _ElectroDashboardPlusState extends State<ElectroDashboardPlus> {
                 children: [
                   for (final item in _sections)
                     if (staff ||
-                        !{'clientes', 'ventas', 'proveedores', 'reportes'}
+                        !{'clientes', 'ventas', 'proveedores', 'reportes', 'pedidos'}
                             .contains(item.id))
                       Padding(
                         padding: const EdgeInsets.only(bottom: 4),
@@ -886,6 +892,14 @@ class _ElectroDashboardPlusState extends State<ElectroDashboardPlus> {
             ' · Tel: ' + _s(m['telefono']),
         valueFor: (m) => _s(m['email'], ''),
         onAdd: createClient,
+      );
+    }
+    if (id == 'pedidos' && staff) {
+      return HistorialPedidosPage(
+        key: ValueKey('pedidos-' + revision.toString()),
+        cargar: widget.cargarPedidos,
+        revisar: widget.revisarPedido,
+        alCambiar: () { refresh(); },
       );
     }
     if (id == 'ventas') {
