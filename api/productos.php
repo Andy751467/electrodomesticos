@@ -5,6 +5,28 @@ require_once "../config/auth.php";
 if (!esta_logueado()) responder(false,"Debes iniciar sesión",null,401);
 $db=(new Database())->getConnection();
 
+// Los clientes solo consultan productos activos, sin acceso al inventario interno.
+if (es_cliente()) {
+    if ($_SERVER['REQUEST_METHOD'] !== 'GET') responder(false,"No tienes permiso para modificar productos",null,403);
+    $sql = "SELECT p.id,p.nombre,p.marca,p.modelo,p.precio,p.descripcion,p.imagen,p.estado,c.nombre categoria FROM productos p LEFT JOIN categorias c ON c.id=p.categoria_id WHERE p.estado=1";
+    $params = [];
+    if (isset($_GET['id'])) {
+        $s = $db->prepare($sql . " AND p.id=?");
+        $s->execute([(int)$_GET['id']]);
+        $p = $s->fetch();
+        if (!$p) responder(false,"Producto no encontrado",null,404);
+        responder(true,"Producto encontrado",$p);
+    }
+    $q = trim($_GET['q'] ?? '');
+    if ($q !== '') {
+        $sql .= " AND (p.nombre LIKE ? OR p.marca LIKE ? OR c.nombre LIKE ?)";
+        $params = array_fill(0,3,"%$q%");
+    }
+    $s = $db->prepare($sql . " ORDER BY p.nombre");
+    $s->execute($params);
+    responder(true,"Catálogo de productos",$s->fetchAll());
+}
+
 $columnas=$db->query("SHOW COLUMNS FROM productos")->fetchAll(PDO::FETCH_COLUMN);
 if(!in_array("codigo_sku",$columnas,true)) $db->exec("ALTER TABLE productos ADD codigo_sku VARCHAR(50) NULL AFTER categoria_id");
 if(!in_array("stock_minimo",$columnas,true)) $db->exec("ALTER TABLE productos ADD stock_minimo INT NOT NULL DEFAULT 5 AFTER stock");
