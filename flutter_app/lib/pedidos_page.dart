@@ -220,6 +220,16 @@ class _HistorialPedidosPageState extends State<HistorialPedidosPage> {
                 _ => 'Pendiente de pago',
               })),
               if (p['venta_id'] != null) Text('Venta #${p['venta_id']}'),
+              if (widget.revisar == null)
+                OutlinedButton.icon(
+                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => VoucherPedidoPage(
+                      pedidoId: p['id'].toString(), cargar: widget.cargar,
+                    ),
+                  )),
+                  icon: const Icon(Icons.receipt_long_outlined),
+                  label: const Text('Ver voucher'),
+                ),
               if (widget.revisar != null && p['estado'] == 'pendiente') Wrap(spacing: 8, runSpacing: 8, children: [
                 OutlinedButton(onPressed: ocupado ? null : () => procesar(p, 'rechazar'), child: const Text('Rechazar')),
                 FilledButton(onPressed: ocupado ? null : () => procesar(p, 'confirmar'), child: const Text('Verificar pago')),
@@ -230,4 +240,136 @@ class _HistorialPedidosPageState extends State<HistorialPedidosPage> {
       );
     },
   );
+}
+
+ 
+class VoucherPedidoPage extends StatefulWidget {
+  const VoucherPedidoPage({super.key, required this.pedidoId, required this.cargar});
+  final String pedidoId;
+  final CargarPedidos cargar;
+
+  @override
+  State<VoucherPedidoPage> createState() => _VoucherPedidoPageState();
+}
+
+class _VoucherPedidoPageState extends State<VoucherPedidoPage> {
+  late Future<Map<String, dynamic>> pedido;
+
+  @override
+  void initState() {
+    super.initState();
+    pedido = buscarPedido();
+  }
+
+  Future<Map<String, dynamic>> buscarPedido() async {
+    final lista = await widget.cargar();
+    for (final p in lista.whereType<Map>()) {
+      if (p['id'].toString() == widget.pedidoId) {
+        return Map<String, dynamic>.from(p);
+      }
+    }
+    throw Exception('No se encontró el pedido en el historial disponible.');
+  }
+
+  void actualizar() => setState(() => pedido = buscarPedido());
+
+  Widget fila(String etiqueta, String valor) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 5),
+    child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Expanded(child: Text(etiqueta, style: const TextStyle(color: Color(0xFF667085)))),
+      Expanded(child: Text(valor, textAlign: TextAlign.end,
+          style: const TextStyle(fontWeight: FontWeight.w600))),
+    ]),
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Voucher'), actions: [
+        IconButton(onPressed: actualizar, tooltip: 'Actualizar estado',
+            icon: const Icon(Icons.refresh)),
+      ]),
+      body: SafeArea(
+        child: FutureBuilder<Map<String, dynamic>>(
+          future: pedido,
+          builder: (context, snap) {
+            if (snap.connectionState != ConnectionState.done) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (snap.hasError || !snap.hasData) {
+              return Center(child: Padding(padding: const EdgeInsets.all(24),
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  const Text('No se pudo cargar el voucher. Tu pedido ya registrado puede consultarse en Mis pedidos.',
+                      textAlign: TextAlign.center),
+                  TextButton(onPressed: actualizar, child: const Text('Reintentar')),
+                ]),
+              ));
+            }
+            final p = snap.data!;
+            final confirmado = p['estado'] == 'confirmado';
+            final rechazado = p['estado'] == 'rechazado';
+            final estado = confirmado ? 'Pago verificado' : rechazado ? 'Pedido rechazado' : 'Pendiente de verificación';
+            final color = confirmado ? const Color(0xFF15803D) : rechazado ? const Color(0xFFB91C1C) : const Color(0xFF92400E);
+            final items = ((p['detalle'] as List?) ?? []).whereType<Map>();
+            return Center(child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 520),
+              child: ListView(padding: const EdgeInsets.all(20), children: [
+                Card(color: Colors.white, elevation: 1,
+                  child: Padding(padding: const EdgeInsets.all(22),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                      Icon(confirmado ? Icons.check_circle_outline : rechazado ? Icons.cancel_outlined : Icons.receipt_long_outlined, color: color, size: 54),
+                      const SizedBox(height: 12),
+                      const Text('ElectroHogar', textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 25, fontWeight: FontWeight.w900)),
+                      Text(confirmado ? 'Voucher de compra' : 'Constancia de pedido',
+                        textAlign: TextAlign.center, style: const TextStyle(fontSize: 18)),
+                      const SizedBox(height: 12),
+                      Text(estado, textAlign: TextAlign.center,
+                        style: TextStyle(color: color, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 12),
+                      const Divider(),
+                      fila('Pedido', '#${p['id']}'),
+                      if (p['venta_id'] != null) fila('Venta', '#${p['venta_id']}'),
+                      fila('Cliente', (p['cliente'] ?? '').toString()),
+                      fila('Fecha del pedido', (p['fecha'] ?? '').toString()),
+                      fila('Método de pago', metodosPedido[p['metodo_pago'].toString()] ?? p['metodo_pago'].toString()),
+                      if ((p['referencia'] ?? '').toString().isNotEmpty)
+                        fila('Operación informada', p['referencia'].toString()),
+                      if (confirmado && p['fecha_revision'] != null)
+                        fila('Verificado el', p['fecha_revision'].toString()),
+                      const Divider(),
+                      const Text('Detalle de productos', style: TextStyle(fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 8),
+                      for (final it in items) Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 7),
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Text((it['nombre'] ?? '').toString(), style: const TextStyle(fontWeight: FontWeight.w600)),
+                          Row(children: [
+                            Expanded(child: Text('${it['cantidad']} × ${dineroPedido(it['precio_unitario'])}')),
+                            Text(dineroPedido(it['subtotal'])),
+                          ]),
+                        ]),
+                      ),
+                      const Divider(),
+                      Row(children: [
+                        const Expanded(child: Text('TOTAL', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17))),
+                        Text(dineroPedido(p['total']), style: const TextStyle(color: Color(0xFFDC2626), fontWeight: FontWeight.w900, fontSize: 23)),
+                      ]),
+                      const SizedBox(height: 20),
+                      Text(confirmado ? 'Gracias por tu compra.' : rechazado ? 'Este pedido no fue confirmado.' : 'El pedido fue registrado. Este documento no acredita un pago recibido.',
+                        textAlign: TextAlign.center),
+                      const SizedBox(height: 10),
+                      const Text('Documento interno. No es una boleta o factura electrónica.', textAlign: TextAlign.center, style: TextStyle(color: Color(0xFF667085), fontSize: 11)),
+                    ]),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                FilledButton(onPressed: () => Navigator.pop(context), child: const Text('Volver')),
+              ]),
+            ));
+          },
+        ),
+      ),
+    );
+  }
 }
