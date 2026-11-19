@@ -3,6 +3,7 @@ import 'pedidos_page.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:url_launcher/url_launcher.dart';
 
 class RegistroCuentaPage extends StatefulWidget {
   const RegistroCuentaPage({super.key, required this.baseUrl});
@@ -582,6 +583,25 @@ class _ClienteCatalogoPageState extends State<ClienteCatalogoPage> {
     ]);
   }
 
+  static const whatsappTienda = String.fromEnvironment('WHATSAPP_TIENDA');
+
+  Future<void> contactarWhatsApp() async {
+    final numero = whatsappTienda.trim();
+    if (!RegExp(r'^[1-9][0-9]{7,14}$').hasMatch(numero)) {
+      mensaje('La tienda todavía no configuró su número de WhatsApp.');
+      return;
+    }
+    final enlace = Uri.https('wa.me', '/$numero', {
+      'text': 'Hola, ElectroHogar. Quisiera realizar una consulta sobre sus productos.',
+    });
+    try {
+      final abierto = await launchUrl(enlace, mode: LaunchMode.externalApplication);
+      if (!abierto && mounted) mensaje('No se pudo abrir WhatsApp. Revisa tu conexión.');
+    } catch (_) {
+      if (mounted) mensaje('No se pudo abrir WhatsApp. Revisa tu conexión.');
+    }
+  }
+
   Widget perfil() {
     return ListView(padding: const EdgeInsets.all(22), children: [
       const CircleAvatar(radius: 40, backgroundColor: Color(0xFFFEE2E2), child: Icon(Icons.person_outline, size: 39, color: rojo)),
@@ -597,6 +617,24 @@ class _ClienteCatalogoPageState extends State<ClienteCatalogoPage> {
         const Divider(height: 1),
         ListTile(leading: const Icon(Icons.receipt_long_outlined), title: const Text('Mis pedidos'), onTap: abrirPedidos, trailing: const Icon(Icons.chevron_right)),
       ])),
+      const SizedBox(height: 22),
+      const Text('Ayuda y contacto',
+        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+      const SizedBox(height: 8),
+      Card(
+        color: Colors.white,
+        child: ListTile(
+          leading: const CircleAvatar(
+            backgroundColor: Color(0xFFDCFCE7),
+            child: Icon(Icons.chat_outlined, color: Color(0xFF15803D)),
+          ),
+          title: const Text('Contactar por WhatsApp',
+            style: TextStyle(fontWeight: FontWeight.w700)),
+          subtitle: const Text('Consulta productos, pedidos y entregas'),
+          trailing: const Icon(Icons.open_in_new, size: 19),
+          onTap: contactarWhatsApp,
+        ),
+      ),
       const SizedBox(height: 22),
       OutlinedButton.icon(onPressed: saliendo ? null : salir, icon: const Icon(Icons.logout), label: const Text('Cerrar sesión')),
     ]);
