@@ -255,6 +255,35 @@ class ApiService {
     return Map<String, dynamic>.from(body['data'] ?? {});
   }
 
+  Future<List<dynamic>> cargarPedidos() async {
+    final r = await _client.get(Uri.parse(baseUrl + '/pedidos.php'), headers: headers)
+        .timeout(const Duration(seconds: 15));
+    final body = _decode(r.body);
+    if (r.statusCode != 200 || body['ok'] != true) {
+      throw Exception(body['mensaje'] ?? 'No se pudieron cargar los pedidos');
+    }
+    return List<dynamic>.from(body['data'] ?? []);
+  }
+
+  Future<Map<String, dynamic>> enviarPedido(Map<String, dynamic> datos) async {
+    final r = await _client.post(Uri.parse(baseUrl + '/pedidos.php'), headers: headers,
+      body: jsonEncode(datos)).timeout(const Duration(seconds: 15));
+    final body = _decode(r.body);
+    if ((r.statusCode != 201 && r.statusCode != 200) || body['ok'] != true) {
+      throw Exception(body['mensaje'] ?? 'No se pudo registrar el pedido');
+    }
+    return Map<String, dynamic>.from(body['data'] as Map);
+  }
+
+  Future<void> revisarPedido(int id, String accion) async {
+    final r = await _client.put(Uri.parse(baseUrl + '/pedidos.php'), headers: headers,
+      body: jsonEncode({'id': id, 'accion': accion})).timeout(const Duration(seconds: 15));
+    final body = _decode(r.body);
+    if (r.statusCode != 200 || body['ok'] != true) {
+      throw Exception(body['mensaje'] ?? 'No se pudo verificar el pedido');
+    }
+  }
+
   Future<void> logout() async {
     try {
       await _client.post(
@@ -392,6 +421,8 @@ class _LoginPageState extends State<LoginPage> {
                   usuario: usuario,
                   cargarProductos: () => ApiService.instance.productos(),
                   cerrarSesion: ApiService.instance.logout,
+                  enviarPedido: ApiService.instance.enviarPedido,
+                  cargarPedidos: ApiService.instance.cargarPedidos,
                 )
               : ElectroDashboardPlus(
             usuario: usuario,
@@ -402,6 +433,8 @@ class _LoginPageState extends State<LoginPage> {
             loadModule: ApiService.instance.listarModulo,
             createClient: ApiService.instance.crearCliente,
             loadSale: ApiService.instance.detalleVenta,
+            cargarPedidos: ApiService.instance.cargarPedidos,
+            revisarPedido: ApiService.instance.revisarPedido,
             logout: ApiService.instance.logout,
           ),
         ),
