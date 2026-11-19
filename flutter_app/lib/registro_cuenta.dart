@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'pedidos_page.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -157,11 +158,15 @@ class ClienteCatalogoPage extends StatefulWidget {
     required this.usuario,
     required this.cargarProductos,
     required this.cerrarSesion,
+    required this.enviarPedido,
+    required this.cargarPedidos,
   });
 
   final Map<String, dynamic> usuario;
   final Future<List<dynamic>> Function() cargarProductos;
   final Future<void> Function() cerrarSesion;
+  final EnviarPedido enviarPedido;
+  final CargarPedidos cargarPedidos;
 
   @override
   State<ClienteCatalogoPage> createState() => _ClienteCatalogoPageState();
@@ -484,9 +489,32 @@ class _ClienteCatalogoPageState extends State<ClienteCatalogoPage> {
     ]);
   }
 
+  Future<void> abrirPago(List<Map> elegidos, int totalCentavos) async {
+    final detalle = elegidos.map((p) => <String, dynamic>{
+      'producto_id': id(p), 'cantidad': carrito[id(p)] ?? 0,
+    }).toList();
+    final resultado = await Navigator.of(context).push<Map<String, dynamic>>(
+      MaterialPageRoute(builder: (_) => PagoPedidoPage(
+        detalle: detalle, totalCentavos: totalCentavos, enviar: widget.enviarPedido,
+      )),
+    );
+    if (!mounted || resultado == null) return;
+    setState(() { carrito.clear(); pestana = 0; });
+    mensaje('Pedido #${resultado['id']} registrado. Consulta Mis pedidos.');
+    abrirPedidos();
+  }
+
+  void abrirPedidos() {
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => Scaffold(
+      appBar: AppBar(title: const Text('Historial de pedidos')),
+      body: SafeArea(child: HistorialPedidosPage(cargar: widget.cargarPedidos)),
+    )));
+  }
+
   Widget vistaCarrito(List<Map> lista) {
     final elegidos = lista.where((p) => carrito.containsKey(id(p))).toList();
-    final total = elegidos.fold<double>(0, (s, p) => s + precio(p) * (carrito[id(p)] ?? 0));
+    final totalCentavos = elegidos.fold<int>(0, (s, p) => s + (precio(p) * 100).round() * (carrito[id(p)] ?? 0));
+    final total = totalCentavos / 100;
     final noDisponibles = carrito.keys.where((clave) => !lista.any((p) => id(p) == clave)).toList();
     return ListView(padding: const EdgeInsets.all(18), children: [
       const Text('Mi carrito', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900)),
@@ -531,7 +559,13 @@ class _ClienteCatalogoPageState extends State<ClienteCatalogoPage> {
               Text(soles(total), style: const TextStyle(fontSize: 22, color: rojo, fontWeight: FontWeight.w900)),
             ]),
             const SizedBox(height: 12),
-            const Text('Carrito de esta sesión. No reserva stock ni envía pedidos. El pago y la confirmación de compra aún no están habilitados.', style: TextStyle(color: Color(0xFF667085))),
+            const Text('El pedido queda pendiente hasta que la tienda verifique el pago y la disponibilidad.', style: TextStyle(color: Color(0xFF667085))),
+            const SizedBox(height: 14),
+            FilledButton.icon(
+              onPressed: noDisponibles.isNotEmpty ? null : () => abrirPago(elegidos, totalCentavos),
+              icon: const Icon(Icons.payments_outlined),
+              label: const Text('Elegir método de pago'),
+            ),
           ]),
         )),
       ],
@@ -550,6 +584,8 @@ class _ClienteCatalogoPageState extends State<ClienteCatalogoPage> {
         const ListTile(leading: Icon(Icons.verified_user_outlined), title: Text('Tipo de cuenta'), subtitle: Text('Cliente')),
         const Divider(height: 1),
         ListTile(leading: const Icon(Icons.favorite_border), title: const Text('Mis favoritos'), onTap: () => navegar(2), trailing: const Icon(Icons.chevron_right)),
+        const Divider(height: 1),
+        ListTile(leading: const Icon(Icons.receipt_long_outlined), title: const Text('Mis pedidos'), onTap: abrirPedidos, trailing: const Icon(Icons.chevron_right)),
       ])),
       const SizedBox(height: 22),
       OutlinedButton.icon(onPressed: saliendo ? null : salir, icon: const Icon(Icons.logout), label: const Text('Cerrar sesión')),
