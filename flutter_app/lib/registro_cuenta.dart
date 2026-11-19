@@ -610,42 +610,173 @@ class _ClienteCatalogoPageState extends State<ClienteCatalogoPage> {
     }
   }
 
-  Widget perfil() {
-    return ListView(padding: const EdgeInsets.all(22), children: [
-      const CircleAvatar(radius: 40, backgroundColor: Color(0xFFFEE2E2), child: Icon(Icons.person_outline, size: 39, color: rojo)),
-      const SizedBox(height: 15),
-      Text(texto(widget.usuario['nombre'], 'Cliente'), textAlign: TextAlign.center, style: const TextStyle(fontSize: 25, fontWeight: FontWeight.bold)),
-      const SizedBox(height: 20),
-      Card(color: Colors.white, child: Column(children: [
-        ListTile(leading: const Icon(Icons.person_outline), title: const Text('Usuario'), subtitle: Text(texto(widget.usuario['usuario'], 'Cliente'))),
-        const Divider(height: 1),
-        const ListTile(leading: Icon(Icons.verified_user_outlined), title: Text('Tipo de cuenta'), subtitle: Text('Cliente')),
-        const Divider(height: 1),
-        ListTile(leading: const Icon(Icons.favorite_border), title: const Text('Mis favoritos'), onTap: () => navegar(2), trailing: const Icon(Icons.chevron_right)),
-        const Divider(height: 1),
-        ListTile(leading: const Icon(Icons.receipt_long_outlined), title: const Text('Mis pedidos'), onTap: abrirPedidos, trailing: const Icon(Icons.chevron_right)),
-      ])),
-      const SizedBox(height: 22),
-      const Text('Ayuda y contacto',
-        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-      const SizedBox(height: 8),
-      Card(
-        color: Colors.white,
-        child: ListTile(
-          leading: const CircleAvatar(
-            backgroundColor: Color(0xFFDCFCE7),
-            child: Icon(Icons.chat_outlined, color: Color(0xFF15803D)),
-          ),
-          title: const Text('Contactar por WhatsApp',
-            style: TextStyle(fontWeight: FontWeight.w700)),
-          subtitle: const Text('Consulta productos, pedidos y entregas'),
-          trailing: const Icon(Icons.open_in_new, size: 19),
-          onTap: contactarWhatsApp,
+  Widget _seccionPerfil(String titulo, List<Widget> filas) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 3, bottom: 9),
+          child: Text(titulo, style: const TextStyle(
+            fontSize: 17, fontWeight: FontWeight.w800, color: negro)),
         ),
+        Card(
+          margin: EdgeInsets.zero,
+          elevation: 0,
+          color: Colors.white,
+          clipBehavior: Clip.antiAlias,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+            side: const BorderSide(color: Color(0xFFE5E7EB)),
+          ),
+          child: Column(children: [
+            for (int n = 0; n < filas.length; n++) ...[
+              if (n > 0) const Divider(height: 1, indent: 72, endIndent: 16),
+              filas[n],
+            ],
+          ]),
+        ),
+      ],
+    );
+  }
+
+  Widget _filaPerfil({
+    required IconData icono,
+    required String titulo,
+    required String subtitulo,
+    VoidCallback? accion,
+    Color color = rojo,
+    Color fondo = const Color(0xFFFEE2E2),
+    IconData iconoFinal = Icons.chevron_right,
+  }) {
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 7),
+      leading: Container(
+        width: 43, height: 43,
+        decoration: BoxDecoration(color: fondo, borderRadius: BorderRadius.circular(13)),
+        child: Icon(icono, color: color, size: 23),
       ),
-      const SizedBox(height: 22),
-      OutlinedButton.icon(onPressed: saliendo ? null : salir, icon: const Icon(Icons.logout), label: const Text('Cerrar sesión')),
-    ]);
+      title: Text(titulo, style: const TextStyle(fontWeight: FontWeight.w700)),
+      subtitle: Text(subtitulo, style: const TextStyle(color: Color(0xFF667085), fontSize: 13)),
+      trailing: accion == null ? null : Icon(iconoFinal, size: 21, color: const Color(0xFF667085)),
+      onTap: accion,
+    );
+  }
+
+  Widget perfil() {
+    final nombre = texto(widget.usuario['nombre'], 'Cliente');
+    final usuario = texto(widget.usuario['usuario']);
+    final unidades = carrito.values.fold<int>(0, (s, n) => s + n);
+    final iniciales = nombre.split(RegExp(r'\s+'))
+        .where((palabra) => palabra.isNotEmpty)
+        .take(2)
+        .map((palabra) => String.fromCharCode(palabra.runes.first).toUpperCase())
+        .join();
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
+      children: [
+        const Text('Mi perfil', style: TextStyle(fontSize: 27, fontWeight: FontWeight.w900)),
+        const SizedBox(height: 5),
+        const Text('Administra tu cuenta y consulta tus compras.',
+          style: TextStyle(color: Color(0xFF667085))),
+        const SizedBox(height: 18),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 26),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(22),
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft, end: Alignment.bottomRight,
+              colors: [negro, Color(0xFF991B1B)],
+            ),
+          ),
+          child: Column(children: [
+            Container(
+              width: 82, height: 82,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                border: Border.all(color: const Color(0xFFFCA5A5), width: 3),
+              ),
+              child: Text(iniciales, style: const TextStyle(
+                fontSize: 28, color: rojo, fontWeight: FontWeight.w900)),
+            ),
+            const SizedBox(height: 14),
+            Text(nombre, textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white, fontSize: 24,
+                fontWeight: FontWeight.w900)),
+            if (usuario.isNotEmpty) ...[
+              const SizedBox(height: 5),
+              Text('@' + usuario, textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.white70)),
+            ],
+            const SizedBox(height: 13),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
+              decoration: BoxDecoration(
+                color: const Color(0x33FFFFFF), borderRadius: BorderRadius.circular(30),
+                border: Border.all(color: const Color(0x66FFFFFF)),
+              ),
+              child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.person_outline, color: Colors.white, size: 17),
+                SizedBox(width: 7),
+                Text('Cuenta de cliente', style: TextStyle(color: Colors.white,
+                  fontWeight: FontWeight.w600)),
+              ]),
+            ),
+          ]),
+        ),
+        const SizedBox(height: 24),
+        _seccionPerfil('Mi actividad', [
+          _filaPerfil(
+            icono: Icons.receipt_long_outlined, titulo: 'Mis pedidos',
+            subtitulo: 'Historial, estado y vouchers de compra', accion: abrirPedidos),
+          _filaPerfil(
+            icono: Icons.favorite_border, titulo: 'Mis favoritos',
+            subtitulo: '${favoritos.length} productos guardados en esta sesión',
+            accion: () => navegar(2)),
+          _filaPerfil(
+            icono: Icons.shopping_cart_outlined, titulo: 'Mi carrito',
+            subtitulo: '$unidades unidades en el carrito', accion: () => navegar(3)),
+        ]),
+        const SizedBox(height: 22),
+        _seccionPerfil('Información de mi cuenta', [
+          _filaPerfil(
+            icono: Icons.badge_outlined, titulo: 'Nombre completo',
+            subtitulo: nombre),
+          _filaPerfil(
+            icono: Icons.alternate_email, titulo: 'Usuario',
+            subtitulo: usuario.isEmpty ? 'No disponible' : usuario),
+          _filaPerfil(
+            icono: Icons.shield_outlined, titulo: 'Tipo de cuenta',
+            subtitulo: 'Cliente de ElectroHogar'),
+        ]),
+        const SizedBox(height: 22),
+        _seccionPerfil('Ayuda y contacto', [
+          _filaPerfil(
+            icono: Icons.chat_outlined, titulo: 'Contactar por WhatsApp',
+            subtitulo: 'Consultas de productos, pedidos y entregas',
+            accion: contactarWhatsApp,
+            color: const Color(0xFF15803D), fondo: const Color(0xFFDCFCE7),
+            iconoFinal: Icons.open_in_new),
+        ]),
+        const SizedBox(height: 26),
+        OutlinedButton.icon(
+          onPressed: saliendo ? null : salir,
+          icon: const Icon(Icons.logout),
+          label: Text(saliendo ? 'Cerrando sesión...' : 'Cerrar sesión'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: rojo,
+            minimumSize: const Size.fromHeight(53),
+            side: const BorderSide(color: Color(0xFFFECACA)),
+          ),
+        ),
+        const SizedBox(height: 16),
+        const Text('ElectroHogar · Tu tienda de electrodomésticos',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: Color(0xFF667085), fontSize: 12)),
+      ],
+    );
   }
 
   @override
