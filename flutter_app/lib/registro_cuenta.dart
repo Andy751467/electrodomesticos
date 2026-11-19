@@ -153,9 +153,13 @@ class _RegistroCuentaPageState extends State<RegistroCuentaPage> {
 
 class ClienteCatalogoPage extends StatefulWidget {
   const ClienteCatalogoPage({
-    super.key, required this.usuario, required this.cargarProductos, required this.cerrarSesion,
+    super.key,
+    required this.usuario,
+    required this.cargarProductos,
+    required this.cerrarSesion,
   });
-  final Map<String,dynamic> usuario;
+
+  final Map<String, dynamic> usuario;
   final Future<List<dynamic>> Function() cargarProductos;
   final Future<void> Function() cerrarSesion;
 
@@ -164,57 +168,443 @@ class ClienteCatalogoPage extends StatefulWidget {
 }
 
 class _ClienteCatalogoPageState extends State<ClienteCatalogoPage> {
+  static const rojo = Color(0xFFDC2626);
+  static const negro = Color(0xFF171717);
   late Future<List<dynamic>> productos;
-  String busqueda = '';
+  final favoritos = <int>{};
+  final carrito = <int, int>{};
+  final buscar = TextEditingController();
+  int pestana = 0;
+  String categoria = '';
+  bool saliendo = false;
+
   @override
-  void initState() { super.initState(); productos = widget.cargarProductos(); }
+  void initState() {
+    super.initState();
+    productos = widget.cargarProductos();
+  }
+
+  @override
+  void dispose() {
+    buscar.dispose();
+    super.dispose();
+  }
+
+  String texto(dynamic v, [String defecto = '']) {
+    final t = (v ?? '').toString().trim();
+    return t.isEmpty ? defecto : t;
+  }
+
+  int id(Map p) => int.tryParse(texto(p['id'])) ?? 0;
+  double precio(Map p) => double.tryParse(texto(p['precio'])) ?? 0;
+  String soles(double v) => 'S/ ' + v.toStringAsFixed(2);
+
   void actualizar() => setState(() => productos = widget.cargarProductos());
 
+  void navegar(int i) {
+    FocusScope.of(context).unfocus();
+    setState(() => pestana = i);
+  }
+
+  void mensaje(String t) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(t)));
+  }
+
+  void agregar(Map p) {
+    final clave = id(p);
+    if (clave <= 0) return;
+    if ((carrito[clave] ?? 0) >= 99) {
+      mensaje('El máximo es 99 unidades por producto.');
+      return;
+    }
+    setState(() => carrito[clave] = (carrito[clave] ?? 0) + 1);
+    mensaje('Producto agregado al carrito');
+  }
+
+  void cambiarCantidad(int clave, int cambio) {
+    setState(() {
+      final n = (carrito[clave] ?? 0) + cambio;
+      if (n <= 0) {
+        carrito.remove(clave);
+      } else if (n <= 99) {
+        carrito[clave] = n;
+      }
+    });
+  }
+
+  void alternarFavorito(int clave) {
+    setState(() {
+      if (!favoritos.add(clave)) favoritos.remove(clave);
+    });
+  }
+
   Future<void> salir() async {
-    try { await widget.cerrarSesion(); } catch (_) {}
-    if (mounted) Navigator.of(context).pushNamedAndRemoveUntil('/login', (_) => false);
+    if (saliendo) return;
+    final confirma = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Cerrar sesión'),
+        content: const Text('Tu carrito y favoritos de esta sesión se perderán.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Salir')),
+        ],
+      ),
+    );
+    if (!mounted || confirma != true) return;
+    setState(() => saliendo = true);
+    try {
+      await widget.cerrarSesion();
+    } catch (_) {
+      // ApiService limpia la cookie local incluso si el servidor no responde.
+    }
+    if (mounted) {
+      Navigator.of(context).pushNamedAndRemoveUntil('/login', (_) => false);
+    }
+  }
+
+  Widget foto(Map p, {double altura = 120, double? ancho}) {
+    final url = Uri.tryParse(texto(p['imagen']));
+    final uriValida = url != null &&
+        (url.scheme == 'http' || url.scheme == 'https') &&
+        url.host.isNotEmpty;
+    final alternativa = Center(
+      child: Icon(Icons.devices_other_outlined, size: altura > 100 ? 45 : 28,
+          color: const Color(0xFF9CA3AF)),
+    );
+    return Container(
+      height: altura,
+      width: ancho ?? double.infinity,
+      color: const Color(0xFFF5F6F8),
+      child: uriValida
+          ? Image.network(url.toString(), fit: BoxFit.contain,
+              errorBuilder: (_, __, ___) => alternativa)
+          : alternativa,
+    );
+  }
+
+  Future<void> detalle(Map p) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      builder: (ctx) => SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(22, 4, 22, 26),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ClipRRect(borderRadius: BorderRadius.circular(16), child: foto(p, altura: 225)),
+            const SizedBox(height: 18),
+            Text(texto(p['categoria'], 'Electrodomésticos'),
+                style: const TextStyle(color: Colors.grey)),
+            const SizedBox(height: 6),
+            Text(texto(p['nombre'], 'Producto'),
+                style: const TextStyle(fontSize: 25, fontWeight: FontWeight.w900)),
+            Text([texto(p['marca']), texto(p['modelo'])].where((t) => t.isNotEmpty).join(' · ')),
+            const SizedBox(height: 14),
+            Text(soles(precio(p)), style: const TextStyle(color: rojo, fontSize: 26, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 16),
+            const Text('Descripción', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 6),
+            Text(texto(p['descripcion'], 'Consulta las características de este producto en la tienda.')),
+            const SizedBox(height: 22),
+            FilledButton.icon(
+              onPressed: () { Navigator.pop(ctx); agregar(p); },
+              icon: const Icon(Icons.add_shopping_cart),
+              label: const Text('Agregar al carrito'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget tarjeta(Map p) {
+    final marcado = favoritos.contains(id(p));
+    return Card(
+      margin: EdgeInsets.zero,
+      elevation: 0,
+      color: Colors.white,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        side: const BorderSide(color: Color(0xFFE5E7EB)),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Stack(children: [
+            InkWell(onTap: () => detalle(p), child: foto(p, altura: 112)),
+            Positioned(top: 4, right: 4, child: IconButton.filledTonal(
+              tooltip: marcado ? 'Quitar de favoritos' : 'Agregar a favoritos',
+              onPressed: () => alternarFavorito(id(p)),
+              icon: Icon(marcado ? Icons.favorite : Icons.favorite_border,
+                  color: marcado ? rojo : negro, size: 19),
+            )),
+          ]),
+          Expanded(child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                InkWell(
+                  onTap: () => detalle(p),
+                  child: Text(texto(p['nombre'], 'Producto'), maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                ),
+                Text(texto(p['marca']), maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: Color(0xFF667085), fontSize: 12)),
+                const Spacer(),
+                Text(soles(precio(p)), maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: rojo, fontWeight: FontWeight.w900, fontSize: 17)),
+                const SizedBox(height: 5),
+                Row(children: [
+                  Expanded(child: TextButton(
+                    style: TextButton.styleFrom(padding: EdgeInsets.zero),
+                    onPressed: () => detalle(p),
+                    child: const Text('Ver detalle'),
+                  )),
+                  IconButton(
+                    tooltip: 'Agregar al carrito',
+                    onPressed: () => agregar(p),
+                    icon: const Icon(Icons.add_shopping_cart, color: rojo),
+                  ),
+                ]),
+              ],
+            ),
+          )),
+        ],
+      ),
+    );
+  }
+
+  Widget cuadricula(List<Map> lista) {
+    if (lista.isEmpty) return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 36),
+        child: Center(child: Text('No se encontraron productos.')));
+    return LayoutBuilder(builder: (context, box) {
+      final escala = MediaQuery.textScalerOf(context).scale(14) / 14;
+      final columnas = box.maxWidth < 330 || escala > 1.25 ? 1 : box.maxWidth > 850 ? 4 : box.maxWidth > 550 ? 3 : 2;
+      return GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: columnas, crossAxisSpacing: 12, mainAxisSpacing: 12,
+          mainAxisExtent: 286 + (escala > 1 ? (escala - 1) * 120 : 0),
+        ),
+        itemCount: lista.length,
+        itemBuilder: (_, i) => tarjeta(lista[i]),
+      );
+    });
+  }
+
+  Widget categorias(List<Map> lista) {
+    final nombres = lista.map((p) => texto(p['categoria'])).where((s) => s.isNotEmpty).toSet().toList()..sort();
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(children: [
+        for (final nombre in ['', ...nombres])
+          Padding(padding: const EdgeInsets.only(right: 8), child: ChoiceChip(
+            label: Text(nombre.isEmpty ? 'Todos' : nombre),
+            selected: categoria == nombre,
+            onSelected: (_) { setState(() { categoria = nombre; pestana = 1; }); },
+          )),
+      ]),
+    );
+  }
+
+  Widget inicio(List<Map> lista) {
+    return ListView(padding: const EdgeInsets.all(18), children: [
+      Container(
+        padding: const EdgeInsets.all(23),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(22),
+          gradient: const LinearGradient(colors: [Color(0xFF171717), Color(0xFF991B1B)]),
+        ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text('TU TIENDA DE ELECTRODOMÉSTICOS', style: TextStyle(color: Color(0xFFFECACA), fontWeight: FontWeight.bold, fontSize: 11)),
+          const SizedBox(height: 12),
+          Text('Hola, ' + texto(widget.usuario['nombre'], 'Cliente'), style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: Colors.white)),
+          const SizedBox(height: 8),
+          const Text('Encuentra lo que necesitas para tu hogar.', style: TextStyle(color: Colors.white70, fontSize: 15)),
+          const SizedBox(height: 18),
+          FilledButton.icon(
+            onPressed: () { setState(() { buscar.clear(); categoria = ''; pestana = 1; }); },
+            icon: const Icon(Icons.storefront_outlined),
+            label: const Text('Explorar catálogo'),
+            style: FilledButton.styleFrom(backgroundColor: Colors.white, foregroundColor: negro),
+          ),
+        ]),
+      ),
+      const SizedBox(height: 24),
+      const Text('Categorías', style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold)),
+      const SizedBox(height: 10),
+      categorias(lista),
+      const SizedBox(height: 19),
+      Row(children: [
+        const Expanded(child: Text('Descubre productos', style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold))),
+        TextButton(onPressed: () { setState(() { buscar.clear(); categoria = ''; pestana = 1; }); }, child: const Text('Ver todos')),
+      ]),
+      const SizedBox(height: 7),
+      cuadricula(lista.take(6).toList()),
+    ]);
+  }
+
+  Widget catalogo(List<Map> lista) {
+    final q = buscar.text.trim().toLowerCase();
+    final filtrada = lista.where((p) => (categoria.isEmpty || texto(p['categoria']) == categoria) &&
+        [p['nombre'], p['marca'], p['categoria'], p['modelo']].map((v) => texto(v).toLowerCase()).join(' ').contains(q)).toList();
+    return ListView(padding: const EdgeInsets.all(18), children: [
+      const Text('Catálogo', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900)),
+      const SizedBox(height: 12),
+      TextField(controller: buscar, onChanged: (_) => setState(() {}),
+        decoration: InputDecoration(hintText: 'Buscar nombre o marca', prefixIcon: const Icon(Icons.search),
+          suffixIcon: IconButton(tooltip: 'Limpiar búsqueda', onPressed: () => setState(buscar.clear), icon: const Icon(Icons.close)))),
+      const SizedBox(height: 13),
+      categorias(lista),
+      const SizedBox(height: 12),
+      Text('${filtrada.length} productos'),
+      const SizedBox(height: 12),
+      cuadricula(filtrada),
+    ]);
+  }
+
+  Widget vistaFavoritos(List<Map> lista) {
+    final elegidos = lista.where((p) => favoritos.contains(id(p))).toList();
+    return ListView(padding: const EdgeInsets.all(18), children: [
+      const Text('Mis favoritos', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900)),
+      const SizedBox(height: 12),
+      if (elegidos.isEmpty) const Text('Pulsa el corazón de un producto para guardarlo aquí.')
+      else cuadricula(elegidos),
+    ]);
+  }
+
+  Widget vistaCarrito(List<Map> lista) {
+    final elegidos = lista.where((p) => carrito.containsKey(id(p))).toList();
+    final total = elegidos.fold<double>(0, (s, p) => s + precio(p) * (carrito[id(p)] ?? 0));
+    final noDisponibles = carrito.keys.where((clave) => !lista.any((p) => id(p) == clave)).toList();
+    return ListView(padding: const EdgeInsets.all(18), children: [
+      const Text('Mi carrito', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900)),
+      const SizedBox(height: 12),
+      if (elegidos.isEmpty) ...[
+        const Padding(padding: EdgeInsets.all(24), child: Icon(Icons.shopping_cart_outlined, size: 62, color: Colors.grey)),
+        const Center(child: Text('Tu carrito está vacío')),
+        const SizedBox(height: 16),
+        FilledButton(onPressed: () => navegar(1), child: const Text('Explorar productos')),
+      ],
+      for (final p in elegidos)
+        Card(
+          color: Colors.white,
+          child: Padding(padding: const EdgeInsets.all(12), child: Column(children: [
+            Row(children: [
+              ClipRRect(borderRadius: BorderRadius.circular(10), child: foto(p, altura: 65, ancho: 65)),
+              const SizedBox(width: 12),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(texto(p['nombre']), style: const TextStyle(fontWeight: FontWeight.bold)),
+                Text(soles(precio(p)), style: const TextStyle(color: rojo)),
+              ])),
+              IconButton(tooltip: 'Quitar producto', onPressed: () => setState(() => carrito.remove(id(p))), icon: const Icon(Icons.delete_outline)),
+            ]),
+            Row(children: [
+              IconButton(tooltip: 'Disminuir cantidad', onPressed: () => cambiarCantidad(id(p), -1), icon: const Icon(Icons.remove_circle_outline)),
+              Text((carrito[id(p)] ?? 0).toString()),
+              IconButton(tooltip: 'Aumentar cantidad', onPressed: () => cambiarCantidad(id(p), 1), icon: const Icon(Icons.add_circle_outline)),
+              Expanded(child: Text(soles(precio(p) * (carrito[id(p)] ?? 0)), textAlign: TextAlign.end, style: const TextStyle(fontWeight: FontWeight.bold))),
+            ]),
+          ])),
+        ),
+      if (noDisponibles.isNotEmpty) ...[
+        const Text('Algunos artículos ya no están en el catálogo.'),
+        TextButton(onPressed: () => setState(() { for (final clave in noDisponibles) { carrito.remove(clave); } }), child: const Text('Quitar artículos no disponibles')),
+      ],
+      if (elegidos.isNotEmpty) ...[
+        const SizedBox(height: 18),
+        Card(color: Colors.white, child: Padding(padding: const EdgeInsets.all(18),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Row(children: [
+              const Expanded(child: Text('Total estimado', style: TextStyle(fontWeight: FontWeight.bold))),
+              Text(soles(total), style: const TextStyle(fontSize: 22, color: rojo, fontWeight: FontWeight.w900)),
+            ]),
+            const SizedBox(height: 12),
+            const Text('Carrito de esta sesión. No reserva stock ni envía pedidos. El pago y la confirmación de compra aún no están habilitados.', style: TextStyle(color: Color(0xFF667085))),
+          ]),
+        )),
+      ],
+    ]);
+  }
+
+  Widget perfil() {
+    return ListView(padding: const EdgeInsets.all(22), children: [
+      const CircleAvatar(radius: 40, backgroundColor: Color(0xFFFEE2E2), child: Icon(Icons.person_outline, size: 39, color: rojo)),
+      const SizedBox(height: 15),
+      Text(texto(widget.usuario['nombre'], 'Cliente'), textAlign: TextAlign.center, style: const TextStyle(fontSize: 25, fontWeight: FontWeight.bold)),
+      const SizedBox(height: 20),
+      Card(color: Colors.white, child: Column(children: [
+        ListTile(leading: const Icon(Icons.person_outline), title: const Text('Usuario'), subtitle: Text(texto(widget.usuario['usuario'], 'Cliente'))),
+        const Divider(height: 1),
+        const ListTile(leading: Icon(Icons.verified_user_outlined), title: Text('Tipo de cuenta'), subtitle: Text('Cliente')),
+        const Divider(height: 1),
+        ListTile(leading: const Icon(Icons.favorite_border), title: const Text('Mis favoritos'), onTap: () => navegar(2), trailing: const Icon(Icons.chevron_right)),
+      ])),
+      const SizedBox(height: 22),
+      OutlinedButton.icon(onPressed: saliendo ? null : salir, icon: const Icon(Icons.logout), label: const Text('Cerrar sesión')),
+    ]);
   }
 
   @override
   Widget build(BuildContext context) {
+    final cantidad = carrito.values.fold<int>(0, (s, n) => s + n);
     return Scaffold(
-      appBar: AppBar(title: const Text('ElectroHogar | Catálogo'), actions: [
-        IconButton(onPressed: actualizar, tooltip: 'Actualizar', icon: const Icon(Icons.refresh)),
-        IconButton(onPressed: salir, tooltip: 'Cerrar sesión', icon: const Icon(Icons.logout)),
-      ]),
+      backgroundColor: const Color(0xFFF5F6F8),
+      appBar: AppBar(
+        title: const Text('ElectroHogar'),
+        actions: [
+          IconButton(onPressed: actualizar, tooltip: 'Actualizar catálogo', icon: const Icon(Icons.refresh)),
+          IconButton(onPressed: () => navegar(3), tooltip: 'Mi carrito',
+            icon: Badge(isLabelVisible: cantidad > 0, label: Text(cantidad.toString()), child: const Icon(Icons.shopping_cart_outlined))),
+        ],
+      ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(18),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            Text('Hola, ' + (widget.usuario['nombre'] ?? 'Cliente').toString(), style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 6),
-            const Text('Consulta los electrodomésticos disponibles.'),
-            const SizedBox(height: 15),
-            TextField(onChanged: (v) => setState(() => busqueda = v.trim().toLowerCase()), decoration: const InputDecoration(labelText: 'Buscar producto', prefixIcon: Icon(Icons.search))),
-            const SizedBox(height: 12),
-            Expanded(child: FutureBuilder<List<dynamic>>(
-              future: productos,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState != ConnectionState.done) return const Center(child: CircularProgressIndicator());
-                if (snapshot.hasError) return Center(child: TextButton(onPressed: actualizar, child: const Text('No se pudo cargar. Reintentar')));
-                final lista = (snapshot.data ?? []).whereType<Map>().where((p) => p['estado'].toString() == '1' && [p['nombre'],p['marca'],p['categoria']].join(' ').toLowerCase().contains(busqueda)).toList();
-                if (lista.isEmpty) return const Center(child: Text('No hay productos disponibles.'));
-                return ListView.builder(itemCount: lista.length, itemBuilder: (context, i) {
-                  final p = lista[i];
-                  final url = Uri.tryParse((p['imagen'] ?? '').toString());
-                  final tieneImagen = url != null && (url.scheme == 'https' || url.scheme == 'http') && url.host.isNotEmpty;
-                  final precio = double.tryParse(p['precio'].toString()) ?? 0;
-                  return Card(child: ListTile(
-                    leading: tieneImagen ? SizedBox(width: 52, height: 52, child: Image.network(url.toString(), fit: BoxFit.contain, errorBuilder: (_,__,___) => const Icon(Icons.inventory_2_outlined))) : const Icon(Icons.inventory_2_outlined),
-                    title: Text((p['nombre'] ?? '').toString(), style: const TextStyle(fontWeight: FontWeight.bold)),
-                    subtitle: Text((p['marca'] ?? '').toString()),
-                    trailing: Text('S/ ' + precio.toStringAsFixed(2), style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFDC2626))),
-                  ));
-                });
-              },
-            )),
-          ]),
+        child: pestana == 4 ? perfil() : FutureBuilder<List<dynamic>>(
+          future: productos,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState != ConnectionState.done) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (snapshot.hasError) return Center(child: Padding(
+              padding: const EdgeInsets.all(22),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                const Icon(Icons.cloud_off_outlined, size: 48),
+                const SizedBox(height: 10),
+                const Text('No se pudo cargar el catálogo. Revisa la conexión con XAMPP.', textAlign: TextAlign.center),
+                TextButton(onPressed: actualizar, child: const Text('Reintentar')),
+              ]),
+            ));
+            final lista = (snapshot.data ?? []).whereType<Map>().where((p) => id(p) > 0 && texto(p['estado']) == '1').toList();
+            return switch (pestana) {
+              1 => catalogo(lista),
+              2 => vistaFavoritos(lista),
+              3 => vistaCarrito(lista),
+              _ => inicio(lista),
+            };
+          },
         ),
+      ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: pestana,
+        onDestinationSelected: navegar,
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Inicio'),
+          NavigationDestination(icon: Icon(Icons.storefront_outlined), label: 'Catálogo'),
+          NavigationDestination(icon: Icon(Icons.favorite_border), selectedIcon: Icon(Icons.favorite), label: 'Favoritos'),
+          NavigationDestination(icon: Icon(Icons.shopping_cart_outlined), label: 'Carrito'),
+          NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Perfil'),
+        ],
       ),
     );
   }
