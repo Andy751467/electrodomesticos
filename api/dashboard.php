@@ -3,6 +3,7 @@ require_once "../config/database.php";
 require_once "../config/helpers.php";
 require_once "../config/auth.php";
 if (!esta_logueado()) responder(false,"Debes iniciar sesión",null,401);
+if (!in_array(rol_actual(), ['admin','vendedor'], true)) responder(false,"No tienes permiso para consultar el resumen del negocio",null,403);
 $db=(new Database())->getConnection();
 
 $data=[
