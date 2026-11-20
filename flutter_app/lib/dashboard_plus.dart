@@ -51,6 +51,9 @@ class ElectroDashboardPlus extends StatefulWidget {
     required this.createClient,
     required this.updateClient,
     required this.deleteClient,
+    required this.createCategory,
+    required this.updateCategory,
+    required this.deleteCategory,
     required this.loadSale,
     required this.cargarPedidos,
     required this.revisarPedido,
@@ -66,6 +69,9 @@ class ElectroDashboardPlus extends StatefulWidget {
   final Future<void> Function(Map<String, dynamic> cliente) createClient;
   final Future<void> Function(int id, Map<String, dynamic> cliente) updateClient;
   final Future<void> Function(int id) deleteClient;
+  final Future<void> Function(Map<String, dynamic> categoria) createCategory;
+  final Future<void> Function(int id, Map<String, dynamic> categoria) updateCategory;
+  final Future<void> Function(int id) deleteCategory;
   final Future<Map<String, dynamic>> Function(int id) loadSale;
   final CargarPedidos cargarPedidos;
   final RevisarPedido revisarPedido;
@@ -930,12 +936,17 @@ class _ElectroDashboardPlusState extends State<ElectroDashboardPlus> {
       return _CollectionPage(
         key: ValueKey('categorias-' + revision.toString()),
         title: 'Categorías',
-        subtitle: 'Organización de productos',
+        subtitle: 'Clasifica los productos de ElectroHogar',
         icon: Icons.category_outlined,
         load: () => widget.loadModule('categorias.php'),
         titleFor: (m) => _s(m['nombre']),
         detailFor: (m) => _s(m['descripcion'], 'Sin descripción'),
-        valueFor: (m) => '',
+        valueFor: (m) => 'Productos: ${_number(m['total_productos'])}',
+        addLabel: 'Nueva categoría',
+        onAdd: role == 'admin' ? () => categoryForm() : null,
+        onTap: role == 'admin' ? categoryForm : null,
+        onEdit: role == 'admin' ? categoryForm : null,
+        onDelete: role == 'admin' ? deleteCategory : null,
       );
     }
     if (id == 'clientes') {
@@ -1044,6 +1055,167 @@ class _ElectroDashboardPlusState extends State<ElectroDashboardPlus> {
         ],
       ),
     );
+  }
+
+  // Formulario para registrar o actualizar categorías.
+  Future<void> categoryForm([Map<String, dynamic>? categoria]) async {
+    if (role != 'admin') return;
+    final editing = categoria != null;
+    final id = _number(categoria?['id']);
+    if (editing && id <= 0) return;
+    final formKey = GlobalKey<FormState>();
+    final nombre = TextEditingController(text: _s(categoria?['nombre'], ''));
+    final descripcion = TextEditingController(
+        text: _s(categoria?['descripcion'], ''));
+
+    try {
+      final aceptado = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: Text(editing ? 'Editar categoría' : 'Nueva categoría'),
+          content: SizedBox(
+            width: 470,
+            child: SingleChildScrollView(
+              child: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextFormField(
+                      controller: nombre,
+                      autofocus: true,
+                      textCapitalization: TextCapitalization.words,
+                      decoration: const InputDecoration(
+                        labelText: 'Nombre de la categoría *',
+                        hintText: 'Ej.: Refrigeradoras',
+                        prefixIcon: Icon(Icons.category_outlined),
+                      ),
+                      validator: (v) {
+                        final valor = (v ?? '').trim();
+                        if (valor.isEmpty) return 'Escribe un nombre';
+                        if (valor.length > 100) {
+                          return 'Máximo 100 caracteres';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 14),
+                    TextFormField(
+                      controller: descripcion,
+                      textCapitalization: TextCapitalization.sentences,
+                      maxLines: 3,
+                      decoration: const InputDecoration(
+                        labelText: 'Descripción (opcional)',
+                        hintText: 'Productos que pertenecen a la categoría',
+                        prefixIcon: Icon(Icons.notes_outlined),
+                      ),
+                      validator: (v) => (v ?? '').trim().length > 255
+                          ? 'Máximo 255 caracteres'
+                          : null,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton.icon(
+              onPressed: () {
+                if (formKey.currentState!.validate()) {
+                  Navigator.pop(dialogContext, true);
+                }
+              },
+              icon: Icon(editing ? Icons.save_outlined : Icons.add),
+              label: Text(editing ? 'Guardar cambios' : 'Crear categoría'),
+            ),
+          ],
+        ),
+      );
+      if (aceptado != true) return;
+
+      final datos = <String, dynamic>{
+        'nombre': nombre.text.trim(),
+        'descripcion': descripcion.text.trim(),
+      };
+      if (editing) {
+        await widget.updateCategory(id, datos);
+      } else {
+        await widget.createCategory(datos);
+      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(editing
+            ? 'Categoría actualizada correctamente.'
+            : 'Categoría registrada correctamente.'),
+      ));
+      setState(() => revision++);
+      await refresh();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('No se pudo guardar: '
+            + e.toString().replaceFirst('Exception: ', '')),
+      ));
+    } finally {
+      nombre.dispose();
+      descripcion.dispose();
+    }
+  }
+
+  Future<void> deleteCategory(Map<String, dynamic> categoria) async {
+    if (role != 'admin') return;
+    final id = _number(categoria['id']);
+    if (id <= 0) return;
+    final cantidad = _number(categoria['total_productos']);
+    if (cantidad > 0) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('No puedes eliminar esta categoría: tiene '
+            '$cantidad productos asociados. Reasigna primero esos productos.'),
+      ));
+      return;
+    }
+
+    final confirmado = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('¿Eliminar categoría?'),
+        content: Text('Se eliminará "${_s(categoria['nombre'])}". '
+            'Esta acción no se puede deshacer.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton.icon(
+            style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFFB91C1C)),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            icon: const Icon(Icons.delete_outline),
+            label: const Text('Eliminar categoría'),
+          ),
+        ],
+      ),
+    );
+    if (confirmado != true) return;
+    try {
+      await widget.deleteCategory(id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Categoría eliminada correctamente.'),
+      ));
+      setState(() => revision++);
+      await refresh();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('No se pudo eliminar: '
+            + e.toString().replaceFirst('Exception: ', '')),
+      ));
+    }
   }
 
   Future<void> clientForm([Map<String, dynamic>? cliente]) async {
@@ -1390,6 +1562,7 @@ class _CollectionPage extends StatefulWidget {
     this.onTap,
     this.onEdit,
     this.onDelete,
+    this.addLabel = 'Nuevo cliente',
   });
 
   final String title;
@@ -1403,6 +1576,7 @@ class _CollectionPage extends StatefulWidget {
   final Future<void> Function(Map<String, dynamic>)? onTap;
   final Future<void> Function(Map<String, dynamic>)? onEdit;
   final Future<void> Function(Map<String, dynamic>)? onDelete;
+  final String addLabel;
 
   @override
   State<_CollectionPage> createState() => _CollectionPageState();
@@ -1491,7 +1665,7 @@ class _CollectionPageState extends State<_CollectionPage> {
                         : FilledButton.icon(
                             onPressed: widget.onAdd,
                             icon: const Icon(Icons.add),
-                            label: const Text('Nuevo cliente'),
+                            label: Text(widget.addLabel),
                           );
                     return box.maxWidth >= 580
                         ? Row(
