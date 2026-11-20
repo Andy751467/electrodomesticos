@@ -4,6 +4,27 @@ import 'package:flutter/material.dart';
 typedef EnviarPedido = Future<Map<String, dynamic>> Function(Map<String, dynamic>);
 typedef CargarPedidos = Future<List<dynamic>> Function();
 typedef RevisarPedido = Future<void> Function(int id, String accion);
+typedef ActualizarEntrega = Future<void> Function(int id, String estado);
+
+const estadosEntregaPedido = <String, String>{
+  'pendiente': 'Pendiente de preparación',
+  'preparando': 'En preparación',
+  'enviado': 'Enviado',
+  'listo_recojo': 'Listo para recojo',
+  'entregado': 'Entregado',
+};
+
+String? siguienteEstadoEntregaPedido(String actual, String tipo) {
+  if (actual == 'pendiente') return 'preparando';
+  if (actual == 'preparando') {
+    return tipo == 'delivery' ? 'enviado' : 'listo_recojo';
+  }
+  if (actual == 'enviado' || actual == 'listo_recojo') return 'entregado';
+  return null;
+}
+
+String etiquetaEstadoEntregaPedido(String? codigo) =>
+    estadosEntregaPedido[codigo] ?? 'Pendiente de preparación';
 
 const tiposEntregaPedido = <String, String>{
   'recojo': 'Recojo en tienda',
@@ -223,9 +244,11 @@ class _PagoPedidoPageState extends State<PagoPedidoPage> {
 }
 
 class HistorialPedidosPage extends StatefulWidget {
-  const HistorialPedidosPage({super.key, required this.cargar, this.revisar, this.alCambiar});
+  const HistorialPedidosPage({super.key, required this.cargar,
+    this.revisar, this.actualizarEntrega, this.alCambiar});
   final CargarPedidos cargar;
   final RevisarPedido? revisar;
+  final ActualizarEntrega? actualizarEntrega;
   final VoidCallback? alCambiar;
 
   @override
@@ -265,6 +288,57 @@ class _HistorialPedidosPageState extends State<HistorialPedidosPage> {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(confirmar ? 'Venta registrada' : 'Pedido rechazado')));
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))));
+    } finally {
+      if (mounted) setState(() => ocupado = false);
+    }
+  }
+
+  Future<void> avanzarEntrega(Map p) async {
+    if (ocupado || widget.actualizarEntrega == null ||
+        texto(p['estado']) != 'confirmado') return;
+    final actual = texto(p['estado_entrega']).isEmpty
+        ? 'pendiente' : texto(p['estado_entrega']);
+    final siguiente = siguienteEstadoEntregaPedido(
+        actual, texto(p['tipo_entrega']));
+    if (siguiente == null) return;
+
+    final aceptado = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Actualizar seguimiento'),
+        content: Text('El pedido #${texto(p['id'])} pasará a '
+            '"${etiquetaEstadoEntregaPedido(siguiente)}". '
+            'El cliente podrá ver el nuevo estado en Mis pedidos.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Confirmar estado'),
+          ),
+        ],
+      ),
+    );
+    if (aceptado != true || !mounted) return;
+    setState(() => ocupado = true);
+    try {
+      await widget.actualizarEntrega!(
+          int.parse(texto(p['id'])), siguiente);
+      if (!mounted) return;
+      recargar();
+      widget.alCambiar?.call();
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Pedido actualizado: '
+            '${etiquetaEstadoEntregaPedido(siguiente)}'),
+      ));
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(e.toString().replaceFirst('Exception: ', '')),
+        ));
+      }
     } finally {
       if (mounted) setState(() => ocupado = false);
     }
@@ -310,11 +384,23 @@ class _HistorialPedidosPageState extends State<HistorialPedidosPage> {
               for (final it in ((p['detalle'] as List?) ?? []).whereType<Map>())
                 Text('${it['cantidad']} × ${it['nombre']}  ·  ${dineroPedido(it['subtotal'])}'),
               const SizedBox(height: 10),
-              Chip(label: Text(switch(texto(p['estado'])) {
-                'confirmado' => 'Pago verificado',
-                'rechazado' => 'Rechazado',
-                _ => 'Pendiente de pago',
-              })),
+              Wrap(spacing: 8, runSpacing: 6, children: [
+                Chip(label: Text(switch(texto(p['estado'])) {
+                  'confirmado' => 'Pago verificado',
+                  'rechazado' => 'Rechazado',
+                  _ => 'Pendiente de pago',
+                })),
+                if (texto(p['estado']) == 'confirmado')
+                  Chip(
+                    avatar: const Icon(Icons.local_shipping_outlined, size: 18),
+                    label: Text(etiquetaEstadoEntregaPedido(
+                        texto(p['estado_entrega']))),
+                  ),
+              ]),
+              if (texto(p['estado']) == 'confirmado' &&
+                  texto(p['fecha_estado_entrega']).isNotEmpty)
+                Text('Actualizado: ${texto(p['fecha_estado_entrega'])}',
+                    style: const TextStyle(color: Colors.black54)),
               if (p['venta_id'] != null) Text('Venta #${p['venta_id']}'),
               if (widget.revisar == null)
                 OutlinedButton.icon(
@@ -330,6 +416,24 @@ class _HistorialPedidosPageState extends State<HistorialPedidosPage> {
                 OutlinedButton(onPressed: ocupado ? null : () => procesar(p, 'rechazar'), child: const Text('Rechazar')),
                 FilledButton(onPressed: ocupado ? null : () => procesar(p, 'confirmar'), child: const Text('Verificar pago')),
               ]),
+              if (widget.actualizarEntrega != null &&
+                  texto(p['estado']) == 'confirmado' &&
+                  siguienteEstadoEntregaPedido(
+                    texto(p['estado_entrega']).isEmpty
+                        ? 'pendiente' : texto(p['estado_entrega']),
+                    texto(p['tipo_entrega'])) != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: FilledButton.icon(
+                    onPressed: ocupado ? null : () => avanzarEntrega(p),
+                    icon: const Icon(Icons.local_shipping_outlined),
+                    label: Text('Marcar: ${etiquetaEstadoEntregaPedido(
+                      siguienteEstadoEntregaPedido(
+                        texto(p['estado_entrega']).isEmpty
+                            ? 'pendiente' : texto(p['estado_entrega']),
+                        texto(p['tipo_entrega'])))}'),
+                  ),
+                ),
             ])),
           ),
         ]),
@@ -430,6 +534,12 @@ class _VoucherPedidoPageState extends State<VoucherPedidoPage> {
                       fila('Fecha del pedido', (p['fecha'] ?? '').toString()),
                       fila('Método de pago', metodosPedido[p['metodo_pago'].toString()] ?? p['metodo_pago'].toString()),
                       fila('Entrega', tiposEntregaPedido[(p['tipo_entrega'] ?? 'recojo').toString()] ?? 'Recojo en tienda'),
+                      if (confirmado) fila('Seguimiento',
+                          etiquetaEstadoEntregaPedido(
+                              (p['estado_entrega'] ?? 'pendiente').toString())),
+                      if (confirmado && p['fecha_estado_entrega'] != null)
+                        fila('Última actualización',
+                            p['fecha_estado_entrega'].toString()),
                       if ((p['tipo_entrega'] ?? 'recojo').toString() == 'delivery') ...[
                         const SizedBox(height: 6),
                         const Text('Dirección de entrega',
