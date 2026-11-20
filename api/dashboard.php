@@ -13,6 +13,22 @@ $data=[
     "ingresos"=>(float)$db->query("SELECT COALESCE(SUM(total),0) FROM ventas")->fetchColumn(),
     "stock_bajo"=>(int)$db->query("SELECT COUNT(*) FROM productos WHERE stock<=stock_minimo AND estado=1")->fetchColumn()
 ];
+// Contadores para el panel administrativo.
+// Las fichas en clientes y las cuentas creadas por usuarios son entidades
+// distintas: no se suman para evitar duplicidades.
+$data["cuentas_cliente"] = (int)$db->query(
+    "SELECT COUNT(*) FROM usuarios WHERE rol='cliente' AND estado=1"
+)->fetchColumn();
+$data["pedidos_pendientes"] = (int)$db->query(
+    "SELECT COUNT(*) FROM pedidos_cliente WHERE estado='pendiente'"
+)->fetchColumn();
+$data["ventas_hoy"] = (int)$db->query(
+    "SELECT COUNT(*) FROM ventas WHERE fecha >= CURDATE() AND fecha < CURDATE() + INTERVAL 1 DAY"
+)->fetchColumn();
+$data["ingresos_hoy"] = (float)$db->query(
+    "SELECT COALESCE(SUM(total),0) FROM ventas WHERE fecha >= CURDATE() AND fecha < CURDATE() + INTERVAL 1 DAY"
+)->fetchColumn();
+
 $data["ultimas_ventas"]=$db->query("SELECT v.id,v.fecha,v.total,v.metodo_pago,CONCAT(COALESCE(c.nombres,''),' ',COALESCE(c.apellidos,'')) cliente FROM ventas v LEFT JOIN clientes c ON c.id=v.cliente_id ORDER BY v.id DESC LIMIT 5")->fetchAll();
 
 // Indicadores adicionales para el nuevo panel Flutter (consultas de lectura).
