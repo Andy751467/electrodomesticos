@@ -23,6 +23,7 @@ try {
     if ($method === 'GET') {
         $sql = "SELECT p.id,p.metodo_pago,p.referencia,p.total,p.estado,p.fecha,
                        p.tipo_entrega,p.direccion_entrega,p.referencia_entrega,
+                       p.estado_entrega,p.fecha_estado_entrega,
                        p.fecha_revision,p.venta_id,u.nombre cliente
                 FROM pedidos_cliente p JOIN usuarios u ON u.id=p.usuario_id";
         if ($cliente) $sql .= " WHERE p.usuario_id=?";
@@ -129,13 +130,58 @@ try {
         $ins = $db->prepare("INSERT INTO detalle_pedido_cliente(pedido_id,producto_id,nombre,cantidad,precio_unitario,subtotal) VALUES(?,?,?,?,?,?)");
         foreach ($lineas as $l) $ins->execute(array_merge([$id],$l));
         $db->commit();
-        responder(true,"Pedido registrado; pago pendiente de verificación", ["id"=>$id,"total"=>importePedido($total),"estado"=>"pendiente","tipo_entrega"=>$tipoEntrega],201);
+        responder(true,"Pedido registrado; pago pendiente de verificación", ["id"=>$id,"total"=>importePedido($total),"estado"=>"pendiente","tipo_entrega"=>$tipoEntrega,"estado_entrega"=>"pendiente"],201);
     }
 
     if ($method === 'PUT') {
-        if (!$personal) responder(false,"No tienes permiso para verificar pagos",null,403);
+        if (!$personal) responder(false,"No tienes permiso para administrar pedidos",null,403);
         $d=jsonInput(); $id=$d['id'] ?? null; $accion=$d['accion'] ?? '';
-        if (!is_int($id) || $id < 1 || !in_array($accion,['confirmar','rechazar'],true)) pedidoError("Solicitud inválida");
+        if (!is_int($id) || $id < 1 ||
+            !in_array($accion, ['confirmar','rechazar','actualizar_entrega'], true)) {
+            pedidoError("Solicitud inválida");
+        }
+
+        if ($accion === 'actualizar_entrega') {
+            $nuevo = $d['estado_entrega'] ?? null;
+            if (!is_string($nuevo) ||
+                !in_array($nuevo, ['preparando','enviado','listo_recojo','entregado'], true)) {
+                pedidoError("Estado de entrega inválido");
+            }
+
+            // Separado de pagos: no crea ventas ni cambia el stock.
+            // Bloqueo de fila para evitar pasos duplicados o fuera de orden.
+            $db->beginTransaction();
+            $buscar = $db->prepare(
+                "SELECT estado,tipo_entrega,estado_entrega FROM pedidos_cliente WHERE id=? FOR UPDATE"
+            );
+            $buscar->execute([$id]);
+            $pedido = $buscar->fetch();
+            if (!$pedido) pedidoError("Pedido no encontrado");
+            if ($pedido['estado'] !== 'confirmado') {
+                pedidoError("Primero verifica el pago antes de preparar la entrega");
+            }
+
+            $actual = $pedido['estado_entrega'] ?? 'pendiente';
+            $recojo = $pedido['tipo_entrega'] === 'recojo';
+            $siguiente = match ($actual) {
+                'pendiente' => 'preparando',
+                'preparando' => $recojo ? 'listo_recojo' : 'enviado',
+                'listo_recojo', 'enviado' => 'entregado',
+                default => null,
+            };
+            if ($nuevo !== $siguiente) {
+                pedidoError("Transición no permitida. Actualiza el pedido en orden");
+            }
+
+            $cambiar = $db->prepare(
+                "UPDATE pedidos_cliente SET estado_entrega=?,fecha_estado_entrega=NOW() WHERE id=?"
+            );
+            $cambiar->execute([$nuevo,$id]);
+            $db->commit();
+            responder(true,"Estado de entrega actualizado",
+                ["id"=>$id,"estado_entrega"=>$nuevo]);
+        }
+
         $db->beginTransaction();
         $s=$db->prepare("SELECT * FROM pedidos_cliente WHERE id=? FOR UPDATE");
         $s->execute([$id]); $p=$s->fetch();
