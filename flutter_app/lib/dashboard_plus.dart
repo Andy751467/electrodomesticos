@@ -371,7 +371,7 @@ class _ElectroDashboardPlusState extends State<ElectroDashboardPlus> {
     ];
     return LayoutBuilder(
       builder: (context, box) {
-        final columns = box.maxWidth >= 860 ? 3 : box.maxWidth >= 410 ? 2 : 1;
+        final columns = box.maxWidth >= 860 ? 3 : box.maxWidth >= 320 ? 2 : 1;
         final width = (box.maxWidth - (columns - 1) * 13) / columns;
         return Wrap(
           spacing: 13,
