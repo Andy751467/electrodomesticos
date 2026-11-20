@@ -940,8 +940,9 @@ class _ElectroDashboardPlusState extends State<ElectroDashboardPlus> {
         icon: Icons.category_outlined,
         load: () => widget.loadModule('categorias.php'),
         titleFor: (m) => _s(m['nombre']),
-        detailFor: (m) => _s(m['descripcion'], 'Sin descripción'),
-        valueFor: (m) => 'Productos: ${_number(m['total_productos'])}',
+        detailFor: (m) => '${_s(m['descripcion'], 'Sin descripción')}'
+            ' · Productos: ${_number(m['total_productos'])}',
+        valueFor: (m) => '',
         addLabel: 'Nueva categoría',
         onAdd: role == 'admin' ? () => categoryForm() : null,
         onTap: role == 'admin' ? categoryForm : null,
