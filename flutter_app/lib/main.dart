@@ -280,6 +280,43 @@ class ApiService {
     }
   }
 
+  // Proveedores: altas, cambios y desactivación reversible.
+  Future<void> crearProveedor(Map<String, dynamic> datos) async {
+    final response = await _client.post(
+      Uri.parse(baseUrl + '/proveedores.php'),
+      headers: headers,
+      body: jsonEncode(datos),
+    ).timeout(const Duration(seconds: 15));
+    final body = _decode(response.body);
+    if (response.statusCode != 201 || body['ok'] != true) {
+      throw Exception(body['mensaje'] ?? 'No se pudo registrar el proveedor');
+    }
+  }
+
+  Future<void> actualizarProveedor(int id, Map<String, dynamic> datos) async {
+    final response = await _client.put(
+      Uri.parse(baseUrl + '/proveedores.php'),
+      headers: headers,
+      body: jsonEncode({...datos, 'id': id}),
+    ).timeout(const Duration(seconds: 15));
+    final body = _decode(response.body);
+    if (response.statusCode != 200 || body['ok'] != true) {
+      throw Exception(body['mensaje'] ?? 'No se pudo actualizar el proveedor');
+    }
+  }
+
+  Future<void> desactivarProveedor(int id) async {
+    final response = await _client.delete(
+      Uri.parse(baseUrl + '/proveedores.php'),
+      headers: headers,
+      body: jsonEncode({'id': id}),
+    ).timeout(const Duration(seconds: 15));
+    final body = _decode(response.body);
+    if (response.statusCode != 200 || body['ok'] != true) {
+      throw Exception(body['mensaje'] ?? 'No se pudo desactivar el proveedor');
+    }
+  }
+
   // Actualizar o eliminar fichas de clientes desde el administrador.
   Future<void> actualizarCliente(int id, Map<String, dynamic> datos) async {
     final response = await _client.put(
@@ -499,6 +536,9 @@ class _LoginPageState extends State<LoginPage> {
             createCategory: ApiService.instance.crearCategoria,
             updateCategory: ApiService.instance.actualizarCategoria,
             deleteCategory: ApiService.instance.eliminarCategoria,
+            createSupplier: ApiService.instance.crearProveedor,
+            updateSupplier: ApiService.instance.actualizarProveedor,
+            disableSupplier: ApiService.instance.desactivarProveedor,
             loadSale: ApiService.instance.detalleVenta,
             cargarPedidos: ApiService.instance.cargarPedidos,
             revisarPedido: ApiService.instance.revisarPedido,
