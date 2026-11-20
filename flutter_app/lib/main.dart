@@ -342,6 +342,33 @@ class ApiService {
     }
   }
 
+  // Búsqueda de ventas con filtros combinables y valores escapados en la URL.
+  Future<List<dynamic>> filtrarVentas({
+    String? desde,
+    String? hasta,
+    String? cliente,
+    String? metodoPago,
+  }) async {
+    final parametros = <String, String>{
+      if (desde != null && desde.isNotEmpty) 'desde': desde,
+      if (hasta != null && hasta.isNotEmpty) 'hasta': hasta,
+      if (cliente != null && cliente.trim().isNotEmpty)
+        'cliente': cliente.trim(),
+      if (metodoPago != null && metodoPago.isNotEmpty)
+        'metodo_pago': metodoPago,
+    };
+    final uri = Uri.parse(baseUrl + '/ventas.php').replace(
+      queryParameters: parametros.isEmpty ? null : parametros,
+    );
+    final response = await _client.get(uri, headers: headers)
+        .timeout(const Duration(seconds: 25));
+    final body = _decode(response.body);
+    if (response.statusCode != 200 || body['ok'] != true) {
+      throw Exception(body['mensaje'] ?? 'No se pudo filtrar las ventas');
+    }
+    return List<dynamic>.from(body['data'] ?? []);
+  }
+
   Future<Map<String, dynamic>> detalleVenta(int id) async {
     final response = await _client.get(
       Uri.parse(baseUrl + '/ventas.php?id=' + id.toString()),
@@ -546,6 +573,7 @@ class _LoginPageState extends State<LoginPage> {
             saveProduct: ApiService.instance.guardarProducto,
             deleteProduct: ApiService.instance.eliminarProducto,
             loadModule: ApiService.instance.listarModulo,
+            cargarVentas: ApiService.instance.filtrarVentas,
             createClient: ApiService.instance.crearCliente,
             updateClient: ApiService.instance.actualizarCliente,
             deleteClient: ApiService.instance.eliminarCliente,
