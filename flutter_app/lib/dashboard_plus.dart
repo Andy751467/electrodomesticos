@@ -49,6 +49,8 @@ class ElectroDashboardPlus extends StatefulWidget {
     required this.deleteProduct,
     required this.loadModule,
     required this.createClient,
+    required this.updateClient,
+    required this.deleteClient,
     required this.loadSale,
     required this.cargarPedidos,
     required this.revisarPedido,
@@ -62,6 +64,8 @@ class ElectroDashboardPlus extends StatefulWidget {
   final Future<String> Function(int) deleteProduct;
   final Future<List<dynamic>> Function(String endpoint) loadModule;
   final Future<void> Function(Map<String, dynamic> cliente) createClient;
+  final Future<void> Function(int id, Map<String, dynamic> cliente) updateClient;
+  final Future<void> Function(int id) deleteClient;
   final Future<Map<String, dynamic>> Function(int id) loadSale;
   final CargarPedidos cargarPedidos;
   final RevisarPedido revisarPedido;
@@ -938,14 +942,18 @@ class _ElectroDashboardPlusState extends State<ElectroDashboardPlus> {
       return _CollectionPage(
         key: ValueKey('clientes-' + revision.toString()),
         title: 'Clientes',
-        subtitle: 'Información de clientes registrados',
+        subtitle: 'Registra, busca y administra las fichas de clientes',
         icon: Icons.groups_outlined,
         load: () => widget.loadModule('clientes.php'),
         titleFor: (m) => _s(m['nombres']) + ' ' + _s(m['apellidos'], ''),
         detailFor: (m) => 'DNI: ' + _s(m['dni']) +
-            ' · Tel: ' + _s(m['telefono']),
-        valueFor: (m) => _s(m['email'], ''),
-        onAdd: createClient,
+            ' · Tel: ' + _s(m['telefono']) +
+            ' · Correo: ' + _s(m['email'], 'Sin correo'),
+        valueFor: (m) => _s(m['direccion'], ''),
+        onAdd: () => clientForm(),
+        onTap: clientForm,
+        onEdit: clientForm,
+        onDelete: role == 'admin' ? deleteClient : null,
       );
     }
     if (id == 'pedidos' && staff) {
@@ -1038,20 +1046,32 @@ class _ElectroDashboardPlusState extends State<ElectroDashboardPlus> {
     );
   }
 
-  Future<void> createClient() async {
+  Future<void> clientForm([Map<String, dynamic>? cliente]) async {
+    final editing = cliente != null;
+    final id = _number(cliente?['id']);
+    if (editing && id <= 0) return;
     final formKey = GlobalKey<FormState>();
-    final names = TextEditingController();
-    final surnames = TextEditingController();
-    final dni = TextEditingController();
-    final phone = TextEditingController();
-    final email = TextEditingController();
+    final names = TextEditingController(text: _s(cliente?['nombres'], ''));
+    final surnames = TextEditingController(text: _s(cliente?['apellidos'], ''));
+    final dni = TextEditingController(text: _s(cliente?['dni'], ''));
+    final phone = TextEditingController(text: _s(cliente?['telefono'], ''));
+    final email = TextEditingController(text: _s(cliente?['email'], ''));
+    final address = TextEditingController(text: _s(cliente?['direccion'], ''));
+
+    String? validarLargo(String? texto, String campo, int max) {
+      if ((texto ?? '').trim().length > max) {
+        return '$campo permite hasta $max caracteres';
+      }
+      return null;
+    }
+
     try {
       final accepted = await showDialog<bool>(
         context: context,
         builder: (dialogContext) => AlertDialog(
-          title: const Text('Registrar nuevo cliente'),
+          title: Text(editing ? 'Editar cliente' : 'Registrar nuevo cliente'),
           content: SizedBox(
-            width: 460,
+            width: 480,
             child: SingleChildScrollView(
               child: Form(
                 key: formKey,
@@ -1060,39 +1080,65 @@ class _ElectroDashboardPlusState extends State<ElectroDashboardPlus> {
                   children: [
                     TextFormField(
                       controller: names,
+                      textCapitalization: TextCapitalization.words,
                       decoration: const InputDecoration(labelText: 'Nombres *'),
-                      validator: (v) => v == null || v.trim().isEmpty
-                          ? 'Ingresa los nombres' : null,
+                      validator: (v) {
+                        final valor = (v ?? '').trim();
+                        if (valor.isEmpty) return 'Ingresa los nombres';
+                        if (valor.length > 100) return 'Máximo 100 caracteres';
+                        return null;
+                      },
                     ),
                     const SizedBox(height: 10),
                     TextFormField(
                       controller: surnames,
+                      textCapitalization: TextCapitalization.words,
                       decoration: const InputDecoration(labelText: 'Apellidos'),
+                      validator: (v) => validarLargo(v, 'Apellidos', 100),
                     ),
                     const SizedBox(height: 10),
                     TextFormField(
                       controller: dni,
                       keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(labelText: 'DNI'),
-                      validator: (v) => v == null || v.trim().isEmpty ||
-                              RegExp(r'^[0-9]{8}$').hasMatch(v.trim())
-                          ? null : 'El DNI debe tener 8 dígitos',
+                      decoration: const InputDecoration(labelText: 'DNI (8 dígitos)'),
+                      validator: (v) {
+                        final valor = (v ?? '').trim();
+                        if (valor.isEmpty || RegExp(r'^[0-9]{8}$').hasMatch(valor)) {
+                          return null;
+                        }
+                        return 'El DNI debe tener 8 dígitos';
+                      },
                     ),
                     const SizedBox(height: 10),
                     TextFormField(
                       controller: phone,
                       keyboardType: TextInputType.phone,
                       decoration: const InputDecoration(labelText: 'Teléfono'),
+                      validator: (v) => validarLargo(v, 'Teléfono', 20),
                     ),
                     const SizedBox(height: 10),
                     TextFormField(
                       controller: email,
                       keyboardType: TextInputType.emailAddress,
-                      decoration: const InputDecoration(labelText: 'Correo'),
-                      validator: (v) => v == null || v.trim().isEmpty ||
-                              RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
-                                  .hasMatch(v.trim())
-                          ? null : 'Correo inválido',
+                      decoration: const InputDecoration(labelText: 'Correo electrónico'),
+                      validator: (v) {
+                        final valor = (v ?? '').trim();
+                        if (valor.isEmpty) return null;
+                        if (valor.length > 120) return 'Máximo 120 caracteres';
+                        if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+                            .hasMatch(valor)) {
+                          return 'Escribe un correo válido';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 10),
+                    TextFormField(
+                      controller: address,
+                      textCapitalization: TextCapitalization.sentences,
+                      maxLines: 2,
+                      decoration: const InputDecoration(labelText: 'Dirección'),
+                      validator: (v) => validarLargo(v, 'Dirección', 200),
                     ),
                   ],
                 ),
@@ -1104,35 +1150,46 @@ class _ElectroDashboardPlusState extends State<ElectroDashboardPlus> {
               onPressed: () => Navigator.pop(dialogContext, false),
               child: const Text('Cancelar'),
             ),
-            FilledButton(
+            FilledButton.icon(
               onPressed: () {
                 if (formKey.currentState!.validate()) {
                   Navigator.pop(dialogContext, true);
                 }
               },
-              child: const Text('Guardar cliente'),
+              icon: Icon(editing ? Icons.save_outlined : Icons.person_add_alt_1),
+              label: Text(editing ? 'Guardar cambios' : 'Registrar cliente'),
             ),
           ],
         ),
       );
       if (accepted != true) return;
-      await widget.createClient({
+
+      final datos = <String, dynamic>{
         'nombres': names.text.trim(),
         'apellidos': surnames.text.trim(),
         'dni': dni.text.trim().isEmpty ? null : dni.text.trim(),
         'telefono': phone.text.trim(),
         'email': email.text.trim(),
-      });
+        'direccion': address.text.trim(),
+      };
+      if (editing) {
+        await widget.updateClient(id, datos);
+      } else {
+        await widget.createClient(datos);
+      }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Cliente registrado correctamente.')),
+        SnackBar(content: Text(editing
+            ? 'Cliente actualizado correctamente.'
+            : 'Cliente registrado correctamente.')),
       );
       setState(() => revision++);
       await refresh();
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('No se pudo guardar: ' + e.toString())),
+        SnackBar(content: Text('No se pudo guardar: '
+            + e.toString().replaceFirst('Exception: ', ''))),
       );
     } finally {
       names.dispose();
@@ -1140,6 +1197,51 @@ class _ElectroDashboardPlusState extends State<ElectroDashboardPlus> {
       dni.dispose();
       phone.dispose();
       email.dispose();
+      address.dispose();
+    }
+  }
+
+  Future<void> deleteClient(Map<String, dynamic> cliente) async {
+    if (role != 'admin') return;
+    final id = _number(cliente['id']);
+    if (id <= 0) return;
+    final nombre = ('${_s(cliente['nombres'])} '
+        '${_s(cliente['apellidos'], '')}').trim();
+    final confirmado = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('¿Eliminar cliente?'),
+        content: Text('Se eliminará la ficha de "$nombre". '
+            'Esta acción no se puede deshacer. '
+            'Si el cliente tiene ventas registradas, el sistema impedirá eliminarlo.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: const Color(0xFFB91C1C)),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Eliminar cliente'),
+          ),
+        ],
+      ),
+    );
+    if (confirmado != true) return;
+    try {
+      await widget.deleteClient(id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cliente eliminado correctamente.')),
+      );
+      setState(() => revision++);
+      await refresh();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No se pudo eliminar: '
+            + e.toString().replaceFirst('Exception: ', ''))),
+      );
     }
   }
 
@@ -1286,6 +1388,8 @@ class _CollectionPage extends StatefulWidget {
     required this.valueFor,
     this.onAdd,
     this.onTap,
+    this.onEdit,
+    this.onDelete,
   });
 
   final String title;
@@ -1297,6 +1401,8 @@ class _CollectionPage extends StatefulWidget {
   final String Function(Map<String, dynamic>) valueFor;
   final Future<void> Function()? onAdd;
   final Future<void> Function(Map<String, dynamic>)? onTap;
+  final Future<void> Function(Map<String, dynamic>)? onEdit;
+  final Future<void> Function(Map<String, dynamic>)? onDelete;
 
   @override
   State<_CollectionPage> createState() => _CollectionPageState();
@@ -1437,19 +1543,39 @@ class _CollectionPageState extends State<_CollectionPage> {
                           style: const TextStyle(fontWeight: FontWeight.w700),
                         ),
                         subtitle: Text(widget.detailFor(item)),
-                        trailing: ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 130),
-                          child: Text(
-                            widget.valueFor(item),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.end,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w800,
-                              color: _black,
-                            ),
-                          ),
-                        ),
+                        trailing: widget.onEdit != null || widget.onDelete != null
+                            ? Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (widget.onEdit != null)
+                                    IconButton(
+                                      tooltip: 'Editar cliente',
+                                      icon: const Icon(Icons.edit_outlined,
+                                          color: Color(0xFF2563EB)),
+                                      onPressed: () => widget.onEdit!(item),
+                                    ),
+                                  if (widget.onDelete != null)
+                                    IconButton(
+                                      tooltip: 'Eliminar cliente',
+                                      icon: const Icon(Icons.delete_outline,
+                                          color: Color(0xFFDC2626)),
+                                      onPressed: () => widget.onDelete!(item),
+                                    ),
+                                ],
+                              )
+                            : ConstrainedBox(
+                                constraints: const BoxConstraints(maxWidth: 130),
+                                child: Text(
+                                  widget.valueFor(item),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  textAlign: TextAlign.end,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    color: _black,
+                                  ),
+                                ),
+                              ),
                         onTap: widget.onTap == null
                             ? null
                             : () => widget.onTap!(item),
