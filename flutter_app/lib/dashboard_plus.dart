@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'productos_crud.dart';
 import 'pedidos_page.dart';
+import 'proveedores_crud.dart';
 
 const _black = Color(0xFF101114);
 const _red = Color(0xFFDC2626);
@@ -54,6 +55,9 @@ class ElectroDashboardPlus extends StatefulWidget {
     required this.createCategory,
     required this.updateCategory,
     required this.deleteCategory,
+    required this.createSupplier,
+    required this.updateSupplier,
+    required this.disableSupplier,
     required this.loadSale,
     required this.cargarPedidos,
     required this.revisarPedido,
@@ -72,6 +76,9 @@ class ElectroDashboardPlus extends StatefulWidget {
   final Future<void> Function(Map<String, dynamic> categoria) createCategory;
   final Future<void> Function(int id, Map<String, dynamic> categoria) updateCategory;
   final Future<void> Function(int id) deleteCategory;
+  final Future<void> Function(Map<String, dynamic> proveedor) createSupplier;
+  final Future<void> Function(int id, Map<String, dynamic> proveedor) updateSupplier;
+  final Future<void> Function(int id) disableSupplier;
   final Future<Map<String, dynamic>> Function(int id) loadSale;
   final CargarPedidos cargarPedidos;
   final RevisarPedido revisarPedido;
@@ -990,16 +997,14 @@ class _ElectroDashboardPlusState extends State<ElectroDashboardPlus> {
         onTap: (m) => saleDetails(_number(m['id'])),
       );
     }
-    return _CollectionPage(
+    return ProveedoresCrudPage(
       key: ValueKey('proveedores-' + revision.toString()),
-      title: 'Proveedores',
-      subtitle: 'Directorio de proveedores',
-      icon: Icons.local_shipping_outlined,
-      load: () => widget.loadModule('proveedores.php'),
-      titleFor: (m) => _s(m['razon_social']),
-      detailFor: (m) => 'RUC: ' + _s(m['ruc']) +
-          ' · Tel: ' + _s(m['telefono']),
-      valueFor: (m) => _s(m['contacto'], ''),
+      cargar: () => widget.loadModule('proveedores.php'),
+      crear: widget.createSupplier,
+      actualizar: widget.updateSupplier,
+      desactivar: widget.disableSupplier,
+      puedeEditar: role == 'admin',
+      alCambiar: refresh,
     );
   }
 
