@@ -243,6 +243,31 @@ class ApiService {
     }
   }
 
+  // Actualizar o eliminar fichas de clientes desde el administrador.
+  Future<void> actualizarCliente(int id, Map<String, dynamic> datos) async {
+    final response = await _client.put(
+      Uri.parse(baseUrl + '/clientes.php'),
+      headers: headers,
+      body: jsonEncode({...datos, 'id': id}),
+    ).timeout(const Duration(seconds: 15));
+    final body = _decode(response.body);
+    if (response.statusCode != 200 || body['ok'] != true) {
+      throw Exception(body['mensaje'] ?? 'No se pudo actualizar el cliente');
+    }
+  }
+
+  Future<void> eliminarCliente(int id) async {
+    final response = await _client.delete(
+      Uri.parse(baseUrl + '/clientes.php'),
+      headers: headers,
+      body: jsonEncode({'id': id}),
+    ).timeout(const Duration(seconds: 15));
+    final body = _decode(response.body);
+    if (response.statusCode != 200 || body['ok'] != true) {
+      throw Exception(body['mensaje'] ?? 'No se pudo eliminar el cliente');
+    }
+  }
+
   Future<Map<String, dynamic>> detalleVenta(int id) async {
     final response = await _client.get(
       Uri.parse(baseUrl + '/ventas.php?id=' + id.toString()),
@@ -432,6 +457,8 @@ class _LoginPageState extends State<LoginPage> {
             deleteProduct: ApiService.instance.eliminarProducto,
             loadModule: ApiService.instance.listarModulo,
             createClient: ApiService.instance.crearCliente,
+            updateClient: ApiService.instance.actualizarCliente,
+            deleteClient: ApiService.instance.eliminarCliente,
             loadSale: ApiService.instance.detalleVenta,
             cargarPedidos: ApiService.instance.cargarPedidos,
             revisarPedido: ApiService.instance.revisarPedido,
