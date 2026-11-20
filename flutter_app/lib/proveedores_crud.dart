@@ -94,7 +94,7 @@ class _ProveedoresCrudPageState extends State<ProveedoresCrudPage> {
     final telefono = TextEditingController(text: dato(actual?['telefono']));
     final correo = TextEditingController(text: dato(actual?['email']));
     final direccion = TextEditingController(text: dato(actual?['direccion']));
-    bool activo = !editando || numero(actual['estado']) == 1;
+    bool activo = !editando || numero(actual?['estado']) == 1;
 
     String? validarMax(String? v, int n) =>
         (v ?? '').trim().length > n ? 'Máximo $n caracteres' : null;
