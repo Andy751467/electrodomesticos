@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'productos_crud.dart';
 import 'pedidos_page.dart';
 import 'proveedores_crud.dart';
+import 'ventas_filtros_page.dart';
 
 const _black = Color(0xFF101114);
 const _red = Color(0xFFDC2626);
@@ -49,6 +50,7 @@ class ElectroDashboardPlus extends StatefulWidget {
     required this.saveProduct,
     required this.deleteProduct,
     required this.loadModule,
+    required this.cargarVentas,
     required this.createClient,
     required this.updateClient,
     required this.deleteClient,
@@ -71,6 +73,7 @@ class ElectroDashboardPlus extends StatefulWidget {
   final Future<String> Function(Map<String, dynamic>, int?) saveProduct;
   final Future<String> Function(int) deleteProduct;
   final Future<List<dynamic>> Function(String endpoint) loadModule;
+  final CargarVentas cargarVentas;
   final Future<void> Function(Map<String, dynamic> cliente) createClient;
   final Future<void> Function(int id, Map<String, dynamic> cliente) updateClient;
   final Future<void> Function(int id) deleteClient;
@@ -987,17 +990,10 @@ class _ElectroDashboardPlusState extends State<ElectroDashboardPlus> {
       );
     }
     if (id == 'ventas') {
-      return _CollectionPage(
+      return VentasFiltrosPage(
         key: ValueKey('ventas-' + revision.toString()),
-        title: 'Ventas',
-        subtitle: 'Historial de transacciones realizadas',
-        icon: Icons.receipt_long_outlined,
-        load: () => widget.loadModule('ventas.php'),
-        titleFor: (m) => 'Venta #' + _s(m['id']),
-        detailFor: (m) => _s(m['cliente']) +
-            ' · ' + _s(m['fecha']) + ' · ' + _s(m['metodo_pago']),
-        valueFor: (m) => _money(m['total']),
-        onTap: (m) => saleDetails(_number(m['id'])),
+        cargar: widget.cargarVentas,
+        verDetalle: saleDetails,
       );
     }
     return ProveedoresCrudPage(
