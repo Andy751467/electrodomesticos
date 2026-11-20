@@ -61,6 +61,7 @@ class ElectroDashboardPlus extends StatefulWidget {
     required this.loadSale,
     required this.cargarPedidos,
     required this.revisarPedido,
+    required this.actualizarEntrega,
     required this.logout,
   });
 
@@ -82,6 +83,7 @@ class ElectroDashboardPlus extends StatefulWidget {
   final Future<Map<String, dynamic>> Function(int id) loadSale;
   final CargarPedidos cargarPedidos;
   final RevisarPedido revisarPedido;
+  final ActualizarEntrega actualizarEntrega;
   final Future<void> Function() logout;
 
   @override
@@ -980,6 +982,7 @@ class _ElectroDashboardPlusState extends State<ElectroDashboardPlus> {
         key: ValueKey('pedidos-' + revision.toString()),
         cargar: widget.cargarPedidos,
         revisar: widget.revisarPedido,
+        actualizarEntrega: widget.actualizarEntrega,
         alCambiar: () { refresh(); },
       );
     }
