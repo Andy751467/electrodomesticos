@@ -5,6 +5,11 @@ typedef EnviarPedido = Future<Map<String, dynamic>> Function(Map<String, dynamic
 typedef CargarPedidos = Future<List<dynamic>> Function();
 typedef RevisarPedido = Future<void> Function(int id, String accion);
 
+const tiposEntregaPedido = <String, String>{
+  'recojo': 'Recojo en tienda',
+  'delivery': 'Delivery a domicilio',
+};
+
 const metodosPedido = <String, String>{
   'efectivo': 'Efectivo',
   'yape': 'Yape',
@@ -28,7 +33,10 @@ class PagoPedidoPage extends StatefulWidget {
 
 class _PagoPedidoPageState extends State<PagoPedidoPage> {
   final referencia = TextEditingController();
+  final direccionEntrega = TextEditingController();
+  final referenciaEntrega = TextEditingController();
   late final String clave;
+  String tipoEntrega = 'recojo';
   String metodo = 'efectivo';
   bool enviando = false;
   bool intento = false;
@@ -43,23 +51,41 @@ class _PagoPedidoPageState extends State<PagoPedidoPage> {
   }
 
   @override
-  void dispose() { referencia.dispose(); super.dispose(); }
+  void dispose() {
+    referencia.dispose();
+    direccionEntrega.dispose();
+    referenciaEntrega.dispose();
+    super.dispose();
+  }
 
   String get instruccion => switch(metodo) {
     'yape' => 'Coordina con la tienda el número o QR oficial de Yape. No envíes dinero a un número no verificado.',
     'plin' => 'Solicita a la tienda los datos oficiales de Plin. El pago se comprobará manualmente.',
     'transferencia' => 'Solicita a la tienda su cuenta bancaria oficial. No compartas claves ni códigos de seguridad.',
-    _ => 'Paga en efectivo al recoger tu pedido, según lo coordinado con la tienda.',
+    _ => tipoEntrega == 'delivery'
+        ? 'Coordina con la tienda el pago en efectivo al recibir tu pedido.'
+        : 'Paga en efectivo al recoger tu pedido, según lo coordinado con la tienda.',
   };
 
   Future<void> confirmar() async {
     if (enviando) return;
+    if (!intento && tipoEntrega == 'delivery' &&
+        direccionEntrega.text.trim().length < 8) {
+      setState(() => error =
+          'Ingresa una dirección de entrega con al menos 8 caracteres.');
+      return;
+    }
     FocusScope.of(context).unfocus();
     setState(() { enviando = true; intento = true; error = null; });
     try {
       final result = await widget.enviar({
         'metodo_pago': metodo,
         'referencia': metodo == 'efectivo' ? '' : referencia.text.trim(),
+        'tipo_entrega': tipoEntrega,
+        'direccion_entrega': tipoEntrega == 'delivery'
+            ? direccionEntrega.text.trim() : '',
+        'referencia_entrega': tipoEntrega == 'delivery'
+            ? referenciaEntrega.text.trim() : '',
         'clave_peticion': clave,
         'total_centavos': widget.totalCentavos,
         'detalle': widget.detalle,
@@ -92,6 +118,70 @@ class _PagoPedidoPageState extends State<PagoPedidoPage> {
                 style: const TextStyle(color: Color(0xFFDC2626), fontSize: 22, fontWeight: FontWeight.bold)),
           )),
           const SizedBox(height: 18),
+          const Text('¿Cómo recibirás tu pedido?',
+              style: TextStyle(fontSize: 21, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 10),
+          Card(
+            child: RadioListTile<String>(
+              value: 'recojo',
+              groupValue: tipoEntrega,
+              onChanged: intento ? null : (v) => setState(() {
+                tipoEntrega = v ?? 'recojo';
+                error = null;
+              }),
+              title: const Text('Recojo en tienda'),
+              subtitle: const Text('Coordina con la tienda cuándo recogerlo.'),
+              secondary: const Icon(Icons.storefront_outlined),
+            ),
+          ),
+          Card(
+            child: RadioListTile<String>(
+              value: 'delivery',
+              groupValue: tipoEntrega,
+              onChanged: intento ? null : (v) => setState(() {
+                tipoEntrega = v ?? 'delivery';
+                error = null;
+              }),
+              title: const Text('Delivery a domicilio'),
+              subtitle: const Text('Indica dónde deseas recibir tu compra.'),
+              secondary: const Icon(Icons.local_shipping_outlined),
+            ),
+          ),
+          if (tipoEntrega == 'delivery') ...[
+            const SizedBox(height: 12),
+            TextField(
+              controller: direccionEntrega,
+              enabled: !intento,
+              maxLength: 255,
+              textCapitalization: TextCapitalization.sentences,
+              maxLines: 2,
+              decoration: const InputDecoration(
+                labelText: 'Dirección de entrega *',
+                hintText: 'Calle, número, barrio o sector',
+                prefixIcon: Icon(Icons.location_on_outlined),
+                helperText: 'Mínimo 8 caracteres',
+              ),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: referenciaEntrega,
+              enabled: !intento,
+              maxLength: 180,
+              maxLines: 2,
+              decoration: const InputDecoration(
+                labelText: 'Referencia (opcional)',
+                hintText: 'Frente al parque, casa de portón negro...',
+                prefixIcon: Icon(Icons.pin_drop_outlined),
+              ),
+            ),
+            const Text('El costo y la disponibilidad del delivery se coordinan '
+                'con la tienda. El total mostrado incluye únicamente los productos.',
+                style: TextStyle(color: Color(0xFF667085))),
+          ],
+          const SizedBox(height: 22),
+          const Text('Método de pago',
+              style: TextStyle(fontSize: 21, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 10),
           for (final entry in metodosPedido.entries)
             Card(
               child: ListTile(
@@ -208,6 +298,12 @@ class _HistorialPedidosPageState extends State<HistorialPedidosPage> {
               ]),
               if (widget.revisar != null) Text('Cliente: ${texto(p['cliente'])}'),
               Text(metodosPedido[texto(p['metodo_pago'])] ?? texto(p['metodo_pago'])),
+              Text('Entrega: ${tiposEntregaPedido[texto(p['tipo_entrega'])] ?? 'Recojo en tienda'}'),
+              if (texto(p['tipo_entrega']) == 'delivery') ...[
+                Text('Dirección: ${texto(p['direccion_entrega'])}'),
+                if (texto(p['referencia_entrega']).isNotEmpty)
+                  Text('Referencia de entrega: ${texto(p['referencia_entrega'])}'),
+              ],
               Text(texto(p['fecha']), style: const TextStyle(color: Colors.black54)),
               if (texto(p['referencia']).isNotEmpty) Text('Operación informada: ${p['referencia']}'),
               const Divider(),
@@ -333,6 +429,15 @@ class _VoucherPedidoPageState extends State<VoucherPedidoPage> {
                       fila('Cliente', (p['cliente'] ?? '').toString()),
                       fila('Fecha del pedido', (p['fecha'] ?? '').toString()),
                       fila('Método de pago', metodosPedido[p['metodo_pago'].toString()] ?? p['metodo_pago'].toString()),
+                      fila('Entrega', tiposEntregaPedido[(p['tipo_entrega'] ?? 'recojo').toString()] ?? 'Recojo en tienda'),
+                      if ((p['tipo_entrega'] ?? 'recojo').toString() == 'delivery') ...[
+                        const SizedBox(height: 6),
+                        const Text('Dirección de entrega',
+                            style: TextStyle(fontWeight: FontWeight.bold)),
+                        Text((p['direccion_entrega'] ?? '').toString()),
+                        if ((p['referencia_entrega'] ?? '').toString().isNotEmpty)
+                          Text('Referencia: ${p['referencia_entrega']}'),
+                      ],
                       if ((p['referencia'] ?? '').toString().isNotEmpty)
                         fila('Operación informada', p['referencia'].toString()),
                       if (confirmado && p['fecha_revision'] != null)
