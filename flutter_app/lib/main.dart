@@ -243,6 +243,43 @@ class ApiService {
     }
   }
 
+  // CRUD de categorías: solo el administrador puede modificar los datos.
+  Future<void> crearCategoria(Map<String, dynamic> datos) async {
+    final response = await _client.post(
+      Uri.parse(baseUrl + '/categorias.php'),
+      headers: headers,
+      body: jsonEncode(datos),
+    ).timeout(const Duration(seconds: 15));
+    final body = _decode(response.body);
+    if (response.statusCode != 201 || body['ok'] != true) {
+      throw Exception(body['mensaje'] ?? 'No se pudo registrar la categoría');
+    }
+  }
+
+  Future<void> actualizarCategoria(int id, Map<String, dynamic> datos) async {
+    final response = await _client.put(
+      Uri.parse(baseUrl + '/categorias.php'),
+      headers: headers,
+      body: jsonEncode({...datos, 'id': id}),
+    ).timeout(const Duration(seconds: 15));
+    final body = _decode(response.body);
+    if (response.statusCode != 200 || body['ok'] != true) {
+      throw Exception(body['mensaje'] ?? 'No se pudo actualizar la categoría');
+    }
+  }
+
+  Future<void> eliminarCategoria(int id) async {
+    final response = await _client.delete(
+      Uri.parse(baseUrl + '/categorias.php'),
+      headers: headers,
+      body: jsonEncode({'id': id}),
+    ).timeout(const Duration(seconds: 15));
+    final body = _decode(response.body);
+    if (response.statusCode != 200 || body['ok'] != true) {
+      throw Exception(body['mensaje'] ?? 'No se pudo eliminar la categoría');
+    }
+  }
+
   // Actualizar o eliminar fichas de clientes desde el administrador.
   Future<void> actualizarCliente(int id, Map<String, dynamic> datos) async {
     final response = await _client.put(
@@ -459,6 +496,9 @@ class _LoginPageState extends State<LoginPage> {
             createClient: ApiService.instance.crearCliente,
             updateClient: ApiService.instance.actualizarCliente,
             deleteClient: ApiService.instance.eliminarCliente,
+            createCategory: ApiService.instance.crearCategoria,
+            updateCategory: ApiService.instance.actualizarCategoria,
+            deleteCategory: ApiService.instance.eliminarCategoria,
             loadSale: ApiService.instance.detalleVenta,
             cargarPedidos: ApiService.instance.cargarPedidos,
             revisarPedido: ApiService.instance.revisarPedido,
