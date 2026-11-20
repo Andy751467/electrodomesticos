@@ -22,6 +22,7 @@ try {
 
     if ($method === 'GET') {
         $sql = "SELECT p.id,p.metodo_pago,p.referencia,p.total,p.estado,p.fecha,
+                       p.tipo_entrega,p.direccion_entrega,p.referencia_entrega,
                        p.fecha_revision,p.venta_id,u.nombre cliente
                 FROM pedidos_cliente p JOIN usuarios u ON u.id=p.usuario_id";
         if ($cliente) $sql .= " WHERE p.usuario_id=?";
@@ -50,7 +51,34 @@ try {
             || !is_string($clave) || !preg_match('/^[a-f0-9]{32}$/D', $clave)
             || !is_string($ref) || strlen($ref) > 120) pedidoError("Método o referencia inválidos");
         $ref = trim($ref);
+        // Los clientes antiguos sin esta opción se registran como recojo.
+        $tipoEntrega = $d['tipo_entrega'] ?? 'recojo';
+        $direccionEntrega = $d['direccion_entrega'] ?? '';
+        $referenciaEntrega = $d['referencia_entrega'] ?? '';
+        if (!is_string($tipoEntrega) ||
+            !in_array($tipoEntrega, ['recojo','delivery'], true) ||
+            !is_string($direccionEntrega) ||
+            !is_string($referenciaEntrega)) {
+            pedidoError("Datos de entrega inválidos");
+        }
+        $direccionEntrega = trim($direccionEntrega);
+        $referenciaEntrega = trim($referenciaEntrega);
+        $tamDireccion = function_exists('mb_strlen')
+            ? mb_strlen($direccionEntrega, 'UTF-8') : strlen($direccionEntrega);
+        $tamReferencia = function_exists('mb_strlen')
+            ? mb_strlen($referenciaEntrega, 'UTF-8') : strlen($referenciaEntrega);
+        if ($tipoEntrega === 'delivery' &&
+            ($tamDireccion < 8 || $tamDireccion > 255 || $tamReferencia > 180)) {
+            pedidoError("Ingresa una dirección válida para delivery (mínimo 8 caracteres)");
+        }
+        if ($tipoEntrega === 'recojo') {
+            $direccionEntrega = null;
+            $referenciaEntrega = null;
+        } else if ($referenciaEntrega === '') {
+            $referenciaEntrega = null;
+        }
         // La referencia es informativa; jamás acredita un pago.
+        // El costo de envío no está configurado ni incluido en este total.
         $items = $d['detalle'] ?? null;
         if (!is_array($items) || count($items) < 1 || count($items) > 100) pedidoError("Carrito inválido");
         $cantidades = [];
@@ -85,10 +113,11 @@ try {
             $lineas[] = [$pid,$p['nombre'],$n,importePedido($precio),importePedido($sub)];
         }
         if ($total !== $esperado) pedidoError("Los precios cambiaron. Actualiza el catálogo antes de confirmar.");
-        $ins = $db->prepare("INSERT INTO pedidos_cliente(usuario_id,clave_peticion,metodo_pago,referencia,total)
-                            VALUES(?,?,?,?,?)");
+        $ins = $db->prepare("INSERT INTO pedidos_cliente(usuario_id,clave_peticion,metodo_pago,referencia,total,tipo_entrega,direccion_entrega,referencia_entrega)
+                            VALUES(?,?,?,?,?,?,?,?)");
         try {
-            $ins->execute([$uid,$clave,$metodo,$ref === '' ? null : $ref,importePedido($total)]);
+            $ins->execute([$uid,$clave,$metodo,$ref === '' ? null : $ref,
+                importePedido($total),$tipoEntrega,$direccionEntrega,$referenciaEntrega]);
         } catch (PDOException $e) {
             if ((string)$e->getCode() !== '23000') throw $e;
             $db->rollBack();
@@ -100,7 +129,7 @@ try {
         $ins = $db->prepare("INSERT INTO detalle_pedido_cliente(pedido_id,producto_id,nombre,cantidad,precio_unitario,subtotal) VALUES(?,?,?,?,?,?)");
         foreach ($lineas as $l) $ins->execute(array_merge([$id],$l));
         $db->commit();
-        responder(true,"Pedido registrado; pago pendiente de verificación", ["id"=>$id,"total"=>importePedido($total),"estado"=>"pendiente"],201);
+        responder(true,"Pedido registrado; pago pendiente de verificación", ["id"=>$id,"total"=>importePedido($total),"estado"=>"pendiente","tipo_entrega"=>$tipoEntrega],201);
     }
 
     if ($method === 'PUT') {
