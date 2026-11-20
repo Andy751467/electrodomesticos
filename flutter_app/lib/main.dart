@@ -374,6 +374,22 @@ class ApiService {
     return Map<String, dynamic>.from(body['data'] as Map);
   }
 
+  Future<void> actualizarEntregaPedido(int id, String estado) async {
+    final r = await _client.put(
+      Uri.parse(baseUrl + '/pedidos.php'),
+      headers: headers,
+      body: jsonEncode({
+        'id': id,
+        'accion': 'actualizar_entrega',
+        'estado_entrega': estado,
+      }),
+    ).timeout(const Duration(seconds: 15));
+    final body = _decode(r.body);
+    if (r.statusCode != 200 || body['ok'] != true) {
+      throw Exception(body['mensaje'] ?? 'No se pudo actualizar la entrega');
+    }
+  }
+
   Future<void> revisarPedido(int id, String accion) async {
     final r = await _client.put(Uri.parse(baseUrl + '/pedidos.php'), headers: headers,
       body: jsonEncode({'id': id, 'accion': accion})).timeout(const Duration(seconds: 15));
@@ -542,6 +558,7 @@ class _LoginPageState extends State<LoginPage> {
             loadSale: ApiService.instance.detalleVenta,
             cargarPedidos: ApiService.instance.cargarPedidos,
             revisarPedido: ApiService.instance.revisarPedido,
+            actualizarEntrega: ApiService.instance.actualizarEntregaPedido,
             logout: ApiService.instance.logout,
           ),
         ),
