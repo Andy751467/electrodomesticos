@@ -8,16 +8,113 @@ $db=(new Database())->getConnection();
 $method=$_SERVER["REQUEST_METHOD"];
 
 if($method==="GET"){
-    if(isset($_GET["id"])){
-        $id=(int)$_GET["id"];
-        $s=$db->prepare("SELECT v.*,CONCAT(COALESCE(c.nombres,''),' ',COALESCE(c.apellidos,'')) cliente,u.nombre vendedor FROM ventas v LEFT JOIN clientes c ON c.id=v.cliente_id LEFT JOIN usuarios u ON u.id=v.usuario_id WHERE v.id=?");
-        $s->execute([$id]); $venta=$s->fetch();
-        if(!$venta) responder(false,"Venta no encontrada",null,404);
-        $s2=$db->prepare("SELECT dv.*,p.nombre producto,p.marca FROM detalle_venta dv JOIN productos p ON p.id=dv.producto_id WHERE dv.venta_id=?");
-        $s2->execute([$id]); $venta["detalle"]=$s2->fetchAll();
+    // Incluir el nombre del comprador de pedidos móviles: sus ventas no
+    // tienen cliente_id en la tabla clientes, pero sí un pedido vinculado.
+    $datosVenta = "
+        SELECT v.id, v.fecha, v.total, v.metodo_pago, v.observacion,
+               COALESCE(
+                 NULLIF(TRIM(CONCAT(COALESCE(c.nombres,''),' ',COALESCE(c.apellidos,''))), ''),
+                 NULLIF(TRIM(uc.nombre), ''),
+                 'Sin cliente asignado'
+               ) AS cliente,
+               c.dni AS dni_cliente,
+               u.nombre AS vendedor
+        FROM ventas v
+        LEFT JOIN clientes c ON c.id=v.cliente_id
+        LEFT JOIN usuarios u ON u.id=v.usuario_id
+        LEFT JOIN pedidos_cliente pc ON pc.venta_id=v.id
+        LEFT JOIN usuarios uc ON uc.id=pc.usuario_id
+    ";
+
+    if (isset($_GET["id"])) {
+        $valor = $_GET["id"];
+        if (!is_scalar($valor) ||
+            !preg_match('/^[1-9][0-9]*$/D', (string)$valor)) {
+            responder(false, "Identificador de venta inválido", null, 422);
+        }
+        $id = (int)$valor;
+        $detalleSql = "
+            SELECT v.*, COALESCE(
+                NULLIF(TRIM(CONCAT(COALESCE(c.nombres,''),' ',COALESCE(c.apellidos,''))), ''),
+                NULLIF(TRIM(uc.nombre), ''),
+                'Sin cliente asignado'
+            ) AS cliente, u.nombre AS vendedor
+            FROM ventas v
+            LEFT JOIN clientes c ON c.id=v.cliente_id
+            LEFT JOIN usuarios u ON u.id=v.usuario_id
+            LEFT JOIN pedidos_cliente pc ON pc.venta_id=v.id
+            LEFT JOIN usuarios uc ON uc.id=pc.usuario_id
+            WHERE v.id=?
+        ";
+        $stmt = $db->prepare($detalleSql);
+        $stmt->execute([$id]);
+        $venta = $stmt->fetch();
+        if (!$venta) responder(false,"Venta no encontrada",null,404);
+        $items = $db->prepare(
+            "SELECT dv.*,p.nombre producto,p.marca
+             FROM detalle_venta dv
+             JOIN productos p ON p.id=dv.producto_id
+             WHERE dv.venta_id=?"
+        );
+        $items->execute([$id]);
+        $venta["detalle"] = $items->fetchAll();
         responder(true,"Detalle de venta",$venta);
     }
-    responder(true,"Lista de ventas",$db->query("SELECT v.id,v.fecha,v.total,v.metodo_pago,CONCAT(COALESCE(c.nombres,''),' ',COALESCE(c.apellidos,'')) cliente,u.nombre vendedor FROM ventas v LEFT JOIN clientes c ON c.id=v.cliente_id LEFT JOIN usuarios u ON u.id=v.usuario_id ORDER BY v.id DESC")->fetchAll());
+
+    $desde = trim((string)($_GET['desde'] ?? ''));
+    $hasta = trim((string)($_GET['hasta'] ?? ''));
+    $cliente = trim((string)($_GET['cliente'] ?? ''));
+    $metodo = trim((string)($_GET['metodo_pago'] ?? ''));
+
+    foreach (['desde' => $desde, 'hasta' => $hasta] as $nombre => $fecha) {
+        if ($fecha !== '') {
+            $obj = DateTimeImmutable::createFromFormat('!Y-m-d', $fecha);
+            if (!$obj || $obj->format('Y-m-d') !== $fecha) {
+                responder(false, "La fecha $nombre debe tener el formato AAAA-MM-DD", null, 422);
+            }
+        }
+    }
+    if ($desde !== '' && $hasta !== '' && $desde > $hasta) {
+        responder(false, "La fecha inicial no puede ser posterior a la final", null, 422);
+    }
+    if (strlen($cliente) > 100) {
+        responder(false, "La búsqueda de cliente admite hasta 100 caracteres", null, 422);
+    }
+    if ($metodo !== '' &&
+        !in_array($metodo, ['efectivo','yape','plin','tarjeta','transferencia'], true)) {
+        responder(false, "Método de pago inválido", null, 422);
+    }
+
+    $condiciones = [];
+    $valores = [];
+    if ($desde !== '') {
+        $condiciones[] = "v.fecha >= ?";
+        $valores[] = $desde;
+    }
+    if ($hasta !== '') {
+        // Incluir las ventas de todo el día, incluso las de las 23:59.
+        $condiciones[] = "v.fecha < DATE_ADD(?, INTERVAL 1 DAY)";
+        $valores[] = $hasta;
+    }
+    if ($cliente !== '') {
+        $condiciones[] = "(
+            CONCAT(COALESCE(c.nombres,''),' ',COALESCE(c.apellidos,'')) LIKE ?
+            OR c.dni LIKE ? OR uc.nombre LIKE ? OR uc.usuario LIKE ?
+        )";
+        $busqueda = '%'.$cliente.'%';
+        array_push($valores, $busqueda, $busqueda, $busqueda, $busqueda);
+    }
+    if ($metodo !== '') {
+        $condiciones[] = "v.metodo_pago = ?";
+        $valores[] = $metodo;
+    }
+
+    $sql = $datosVenta;
+    if ($condiciones) $sql .= " WHERE ".implode(" AND ", $condiciones);
+    $sql .= " ORDER BY v.fecha DESC,v.id DESC";
+    $stmt = $db->prepare($sql);
+    $stmt->execute($valores);
+    responder(true, "Lista de ventas", $stmt->fetchAll());
 }
 
 if($method==="POST"){
