@@ -350,20 +350,28 @@ class _ElectroDashboardPlusState extends State<ElectroDashboardPlus> {
 
   Widget kpiCards() {
     final cards = [
-      ('Productos', _number(summary['total_productos']).toString(),
+      ('Productos activos', _number(summary['total_productos']).toString(),
           Icons.inventory_2_outlined, const Color(0xFF2563EB)),
-      ('Clientes', _number(summary['total_clientes']).toString(),
+      ('Fichas de clientes', _number(summary['total_clientes']).toString(),
           Icons.groups_2_outlined, const Color(0xFF7C3AED)),
-      ('Ventas', _number(summary['total_ventas']).toString(),
+      ('Cuentas cliente', _number(summary['cuentas_cliente']).toString(),
+          Icons.person_outline, const Color(0xFF7C3AED)),
+      ('Ventas totales', _number(summary['total_ventas']).toString(),
           Icons.shopping_cart_outlined, const Color(0xFF16A34A)),
-      ('Ingresos', _money(summary['ingresos']),
+      ('Ingresos acumulados', _money(summary['ingresos']),
           Icons.payments_outlined, const Color(0xFFDC2626)),
+      ('Ventas de hoy', _number(summary['ventas_hoy']).toString(),
+          Icons.today_outlined, const Color(0xFF16A34A)),
+      ('Ingresos de hoy', _money(summary['ingresos_hoy']),
+          Icons.account_balance_wallet_outlined, const Color(0xFFDC2626)),
       ('Stock bajo', _number(summary['stock_bajo']).toString(),
           Icons.warning_amber_rounded, const Color(0xFFEA580C)),
+      ('Pedidos pendientes', _number(summary['pedidos_pendientes']).toString(),
+          Icons.pending_actions_outlined, const Color(0xFFB45309)),
     ];
     return LayoutBuilder(
       builder: (context, box) {
-        final columns = box.maxWidth >= 1080 ? 5 : box.maxWidth >= 600 ? 3 : 2;
+        final columns = box.maxWidth >= 860 ? 3 : box.maxWidth >= 410 ? 2 : 1;
         final width = (box.maxWidth - (columns - 1) * 13) / columns;
         return Wrap(
           spacing: 13,
@@ -373,7 +381,7 @@ class _ElectroDashboardPlusState extends State<ElectroDashboardPlus> {
               SizedBox(
                 width: width,
                 child: Container(
-                  height: 140,
+                  height: 148,
                   padding: const EdgeInsets.all(17),
                   decoration: BoxDecoration(
                     color: Colors.white,
@@ -482,11 +490,53 @@ class _ElectroDashboardPlusState extends State<ElectroDashboardPlus> {
     );
   }
 
+  Widget avisosPedidos() {
+    final pendientes = _number(summary['pedidos_pendientes']);
+    if (pendientes == 0 || !staff) return const SizedBox.shrink();
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF7ED),
+        border: Border.all(color: const Color(0xFFFED7AA)),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(children: [
+        const Icon(Icons.pending_actions_outlined,
+            color: Color(0xFFB45309), size: 27),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                pendientes == 1
+                    ? '1 pedido pendiente de revisión'
+                    : '$pendientes pedidos pendientes de revisión',
+                style: const TextStyle(
+                  color: Color(0xFF92400E), fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 4),
+              const Text('Verifica el pago antes de registrar la venta.',
+                  style: TextStyle(color: Color(0xFF92400E), fontSize: 12)),
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
+        IconButton(
+          tooltip: 'Revisar pedidos y pagos',
+          onPressed: () => select('pedidos'),
+          icon: const Icon(Icons.arrow_forward, color: Color(0xFF92400E)),
+        ),
+      ]),
+    );
+  }
+
   Widget quickLinks() {
     final links = [
       ('Productos', Icons.inventory_2_outlined, 'productos'),
       if (staff) ('Clientes', Icons.groups_outlined, 'clientes'),
       if (staff) ('Ventas', Icons.shopping_bag_outlined, 'ventas'),
+      if (staff) ('Pedidos y pagos', Icons.pending_actions_outlined, 'pedidos'),
       ('Stock bajo', Icons.warning_amber_outlined, 'stock'),
       if (staff) ('Reportes', Icons.bar_chart_outlined, 'reportes'),
     ];
@@ -805,6 +855,10 @@ class _ElectroDashboardPlusState extends State<ElectroDashboardPlus> {
           _ErrorPanel(error: error!, retry: refresh)
         else ...[
           kpiCards(),
+          if (_number(summary['pedidos_pendientes']) > 0) ...[
+            const SizedBox(height: 18),
+            avisosPedidos(),
+          ],
           const SizedBox(height: 28),
           heading('Accesos rápidos',
               subtitle: 'Consulta los módulos principales del sistema'),
